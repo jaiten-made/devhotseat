@@ -1,5 +1,4 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import promptTemplate from "./prompt.md?raw";
 
 /** One completed question-and-answer pair from a finished session. */
 export interface TranscriptTurn {
@@ -10,11 +9,12 @@ export interface TranscriptTurn {
 const PLACEHOLDER = "{{transcript}}";
 
 /**
- * Reads the prompt template. It lives in its own .md file so the wording can
- * be iterated on without touching code.
+ * The prompt template. It lives in its own .md file so the wording can be
+ * iterated on without touching code; Vite inlines it as a string so there is
+ * no filesystem read at runtime.
  */
 export function loadPromptTemplate(): string {
-  return readFileSync(join(import.meta.dirname, "prompt.md"), "utf8");
+  return promptTemplate;
 }
 
 /**

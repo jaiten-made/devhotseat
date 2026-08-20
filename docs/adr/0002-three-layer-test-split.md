@@ -1,14 +1,17 @@
 # 2. Three-layer test split
 
+> **Amended by [0009](0009-single-package-on-tanstack-start.md):**
+> the integration layer now tests services directly, not HTTP endpoints.
+
 ## Decision
 
 Three layers, no overlap, with fixed script names:
 
 - `test:unit` — Vitest, colocated `*.test.ts`. Pure functions only: machine
   transitions, prompt construction, response parsing. No DB, no network.
-- `test:integration` — Vitest, `*.integration.test.ts`. Boots the real server
-  and hits real endpoints against a real Postgres test database. Vertex is
-  stubbed at the client boundary.
+- `test:integration` — Vitest, `*.integration.test.ts`. Exercises the service
+  layer against a real Postgres test database. The report generator is stubbed
+  at its client boundary.
 - `test:e2e` — Playwright, driving the browser against the local stack.
 
 The root only fans out with `pnpm -r --if-present`; it holds no test logic.

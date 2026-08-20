@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { REPORT_MODEL } from "../config";
+import { REPORT_MODEL } from "./model";
 import { parseReportResponse } from "./parse";
 import { buildPrompt, loadPromptTemplate, type TranscriptTurn } from "./prompt";
 

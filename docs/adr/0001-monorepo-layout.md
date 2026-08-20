@@ -1,5 +1,8 @@
 # 1. Monorepo layout
 
+> **Superseded by [0009](0009-single-package-on-tanstack-start.md).**
+> Kept for the reasoning; the repo is now a single package.
+
 ## Decision
 
 A pnpm workspace globbing `packages/*`, holding `@hotseat/db` (schema and
