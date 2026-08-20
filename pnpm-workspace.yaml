@@ -1,10 +1,21 @@
 packages:
   - "packages/*"
 
+# Postinstall scripts are blocked by default. Each entry below was read before
+# being decided on.
+#   esbuild        - needed: places the platform binary (drizzle-kit, vite).
+#   @google/genai  - not needed: ships a prebuilt dist and does not even
+#                    include the scripts/prepare.js its prepare hook calls.
+#   protobufjs     - not needed: its postinstall only prints a version-scheme
+#                    warning and returns early.
 allowBuilds:
-  esbuild: set this to true or false
+  esbuild: true
+  '@google/genai': false
+  protobufjs: false
 
-# esbuild (bundled by drizzle-kit and vite) needs its postinstall to place the
-# platform binary. pnpm blocks build scripts by default; this is the allowlist.
-onlyBuiltDependencies:
-  - esbuild
+# pnpm refuses packages published within its minimum release age, as a guard
+# against a compromised publish. @google/genai 2.18.0 was published 2026-08-19,
+# inside that window. Kept deliberately because the brief asks for latest
+# versions; drop this line to fall back to 2.17.0.
+minimumReleaseAgeExclude:
+  - '@google/genai@2.18.0'

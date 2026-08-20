@@ -31,8 +31,9 @@ Create the database role and the dev database:
 sudo systemctl enable --now postgresql@18-main && sudo -u postgres psql -p 5432 -c "CREATE ROLE hotseat LOGIN PASSWORD 'hotseat'" && sudo -u postgres createdb -p 5432 -O hotseat hotseat
 ```
 
-Copy the environment template and adjust `DATABASE_URL` if you changed anything
-above:
+Copy the environment template. Adjust `DATABASE_URL` if you changed anything
+above, and set `GEMINI_API_KEY` to a Google Gemini API key — feedback report
+generation needs it:
 
 ```bash
 cp .env.example .env
