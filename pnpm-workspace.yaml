@@ -1,2 +1,10 @@
 packages:
   - "packages/*"
+
+allowBuilds:
+  esbuild: set this to true or false
+
+# esbuild (bundled by drizzle-kit and vite) needs its postinstall to place the
+# platform binary. pnpm blocks build scripts by default; this is the allowlist.
+onlyBuiltDependencies:
+  - esbuild

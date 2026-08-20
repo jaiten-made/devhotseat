@@ -11,6 +11,7 @@ no auth, no multi-tenancy and no hosted deployment: it runs locally.
 | ---- | ------- |
 | Node | 24.19.0 (see `.nvmrc`) |
 | pnpm | 11.22.0 (pinned via `packageManager`, provided by Corepack) |
+| PostgreSQL | 18.6, listening on 5432 |
 
 ```bash
 nvm install && nvm use && corepack enable
@@ -22,6 +23,25 @@ From the repository root:
 
 ```bash
 pnpm install
+```
+
+Create the database role and the dev database:
+
+```bash
+sudo systemctl enable --now postgresql@18-main && sudo -u postgres psql -p 5432 -c "CREATE ROLE hotseat LOGIN PASSWORD 'hotseat'" && sudo -u postgres createdb -p 5432 -O hotseat hotseat
+```
+
+Copy the environment template and adjust `DATABASE_URL` if you changed anything
+above:
+
+```bash
+cp .env.example .env
+```
+
+Apply the migrations:
+
+```bash
+pnpm --filter @hotseat/db migrate
 ```
 
 ## Testing
@@ -46,7 +66,8 @@ pnpm lint
 
 | Path | Contents |
 | ---- | -------- |
-| `packages/api` | HTTP server and the values that must not be duplicated client-side |
+| `packages/api` | Session state machine, and the values that must not be duplicated client-side |
+| `packages/db` | Drizzle schema, generated migrations, database client |
 | `docs/adr` | Decision records |
 
 ## Decisions
