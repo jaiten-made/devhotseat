@@ -6,11 +6,7 @@ import {
   transition,
 } from "./machine";
 
-const START: MachineEvent = {
-  type: "START",
-  questionCount: 3,
-  availableQuestions: 10,
-};
+const START: MachineEvent = { type: "START", availableQuestions: 3 };
 const SUBMIT: MachineEvent = { type: "SUBMIT_ANSWER" };
 const READY: MachineEvent = { type: "REPORT_READY" };
 const FAILED: MachineEvent = { type: "REPORT_FAILED" };
@@ -167,58 +163,38 @@ describe("transition — the full state x event matrix", () => {
 
 describe("starting a session", () => {
   it("rejects an empty bank", () => {
-    expect(
-      transition(null, {
-        type: "START",
-        questionCount: 5,
-        availableQuestions: 0,
-      }),
-    ).toEqual({ ok: false, reason: "empty_question_bank" });
+    expect(transition(null, { type: "START", availableQuestions: 0 })).toEqual({
+      ok: false,
+      reason: "empty_question_bank",
+    });
   });
 
   it("starts on a single question", () => {
-    expect(
-      transition(null, {
-        type: "START",
-        questionCount: 5,
-        availableQuestions: 1,
-      }),
-    ).toEqual({
+    expect(transition(null, { type: "START", availableQuestions: 1 })).toEqual({
       ok: true,
       state: { status: "awaiting_answer", position: 1, questionCount: 1 },
     });
   });
 
-  // SESSION_LENGTH is a ceiling, not a quota: a smaller bank gives a shorter
-  // session rather than no session.
-  it.each([
-    [1, 1],
-    [4, 4],
-    [5, 5],
-    [9, 5],
-  ])("a bank of %i questions gives a session of %i", (available, expected) => {
-    expect(
-      transition(null, {
-        type: "START",
-        questionCount: 5,
-        availableQuestions: available,
-      }),
-    ).toEqual({
-      ok: true,
-      state: {
-        status: "awaiting_answer",
-        position: 1,
-        questionCount: expected,
-      },
-    });
-  });
+  // A session is the whole bank, so its length is just the bank size.
+  it.each([1, 2, 5, 9, 40])(
+    "a bank of %i questions gives a session of the same length",
+    (available) => {
+      expect(
+        transition(null, { type: "START", availableQuestions: available }),
+      ).toEqual({
+        ok: true,
+        state: {
+          status: "awaiting_answer",
+          position: 1,
+          questionCount: available,
+        },
+      });
+    },
+  );
 
   it("ends a one-question session on its only answer", () => {
-    const started = transition(null, {
-      type: "START",
-      questionCount: 5,
-      availableQuestions: 1,
-    });
+    const started = transition(null, { type: "START", availableQuestions: 1 });
     if (!started.ok) throw new Error("expected a session");
     expect(transition(started.state, SUBMIT)).toEqual({
       ok: true,
@@ -226,16 +202,12 @@ describe("starting a session", () => {
     });
   });
 
-  // SESSION_LENGTH is edited by hand during testing, so a nonsense value must
-  // not produce a session that can never end.
-  it.each([0, -1, 2.5])("rejects a question count of %s", (questionCount) => {
-    expect(
-      transition(null, {
-        type: "START",
-        questionCount,
-        availableQuestions: 100,
-      }),
-    ).toEqual({ ok: false, reason: "invalid_question_count" });
+  // A count that is not a positive integer can only come from a bug upstream.
+  it.each([-1, 2.5])("rejects a bank count of %s", (availableQuestions) => {
+    expect(transition(null, { type: "START", availableQuestions })).toEqual({
+      ok: false,
+      reason: "empty_question_bank",
+    });
   });
 });
 
@@ -245,11 +217,8 @@ describe("auto-ending", () => {
     let state = (
       transition(null, {
         type: "START",
-        questionCount,
-        availableQuestions: 8,
-      }) as {
-        state: MachineState;
-      }
+        availableQuestions: questionCount,
+      }) as { state: MachineState }
     ).state;
 
     // The first four answers must each leave the session waiting for another.
@@ -281,7 +250,7 @@ describe("auto-ending", () => {
       state = result.state;
     };
 
-    step({ type: "START", questionCount: 3, availableQuestions: 3 });
+    step({ type: "START", availableQuestions: 3 });
     step(SUBMIT);
     step(SUBMIT);
     step(SUBMIT);

@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { SESSION_LENGTH } from "../config";
 import { getDb, getReportGenerator } from "../server/deps";
 import {
   createSession,
@@ -25,7 +24,7 @@ export const fetchSession = createServerFn({ method: "GET" })
 export const startSession = createServerFn({ method: "POST" }).handler(
   async () => {
     const db = getDb();
-    const result = await createSession(db, SESSION_LENGTH);
+    const result = await createSession(db);
     if (!result.ok) {
       return { ok: false as const, reason: result.reason, have: result.have };
     }

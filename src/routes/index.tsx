@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SESSION_LENGTH } from "@/config";
 import { createQuestion, removeQuestion } from "@/fn/questions";
 import { startSession } from "@/fn/sessions";
 import { questionsQuery } from "@/lib/queries";
@@ -72,10 +71,9 @@ function QuestionBank() {
   }
 
   const bank = questions.data;
-  // SESSION_LENGTH is a maximum: one question is enough to start, and a
-  // smaller bank simply gives a shorter session.
+  // A session asks the whole bank, so one question is enough to start.
   const canStart = bank.length > 0;
-  const upcomingLength = Math.min(SESSION_LENGTH, bank.length);
+  const upcomingLength = bank.length;
 
   return (
     <section>
@@ -83,7 +81,8 @@ function QuestionBank() {
         Question bank
       </h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        A session asks up to {SESSION_LENGTH} of these, picked at random.
+        A session asks every question here, in random order. Add as many as you
+        like.
       </p>
 
       <form

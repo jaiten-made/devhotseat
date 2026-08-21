@@ -40,29 +40,25 @@ export type CreateSessionResult =
     };
 
 /**
- * Starts a session: picks its questions at random, copies their text onto the
- * turns, and inserts every turn up front with no answer yet.
- *
- * `sessionLength` is a maximum. A bank holding fewer than that yields a shorter
- * session; only an empty bank is refused.
+ * Starts a session over the whole question bank, shuffled, copying each
+ * question's text onto its turn and inserting every turn up front with no
+ * answer yet. Only an empty bank is refused.
  */
 export async function createSession(
   db: Database,
-  sessionLength: number,
 ): Promise<CreateSessionResult> {
   const [available] = await db.select({ value: count() }).from(questions);
   const have = available?.value ?? 0;
 
   const started = transition(null, {
     type: "START",
-    questionCount: sessionLength,
     availableQuestions: have,
   });
   if (!started.ok) {
     return { ok: false, reason: started.reason, have };
   }
 
-  // The machine decides the length, capping it at what the bank can supply.
+  // The machine decides the length: every question the bank holds.
   const questionCount = started.state.questionCount;
 
   const sessionId = await db.transaction(async (tx) => {
@@ -70,8 +66,8 @@ export async function createSession(
       .select({ text: questions.text })
       .from(questions)
       // The query builder cannot express ORDER BY random(), so this is raw SQL.
-      .orderBy(sql`random()`)
-      .limit(questionCount);
+      // No limit: the session is the whole bank, in random order.
+      .orderBy(sql`random()`);
 
     const [session] = await tx
       .insert(sessions)

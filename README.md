@@ -52,8 +52,9 @@ pnpm dev
 ```
 
 The app is served at http://localhost:3000. Add questions on the first page,
-start a session once the bank holds at least five, then read the transcript and
-report from **Sessions**.
+start a session once the bank holds at least one, then read the transcript and
+report from **Sessions**. A session asks every question in the bank, in random
+order.
 
 ## Testing
 

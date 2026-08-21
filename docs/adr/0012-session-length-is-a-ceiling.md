@@ -1,5 +1,8 @@
 # 12. Session length is a ceiling, not a quota
 
+> **Superseded by [0014](0014-a-session-is-the-whole-question-bank.md).**
+> A session now asks every question in the bank; there is no ceiling.
+
 ## Decision
 
 A session needs one question in the bank, not `SESSION_LENGTH` of them. The

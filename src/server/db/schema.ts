@@ -31,9 +31,9 @@ export const sessions = pgTable("sessions", {
   id: uuid("id").primaryKey().defaultRandom(),
   status: sessionStatus("status").notNull().default("in_progress"),
   /**
-   * Snapshot of SESSION_LENGTH taken when the session started. Stored rather
-   * than read from config so that changing the configured length does not
-   * retroactively change how far along a finished session appears to be.
+   * How many questions the bank held when this session started. Stored rather
+   * than derived, so growing the bank later does not retroactively change how
+   * far along a finished session appears to be.
    */
   questionCount: integer("question_count").notNull(),
   startedAt: timestamp("started_at", { withTimezone: true })

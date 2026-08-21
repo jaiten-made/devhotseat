@@ -5,11 +5,9 @@
  * HTTP layer needs a *reason* when it rejects an event so it can pick a status
  * code, and "unhandled events are ignored" is the wrong default for that.
  *
- * The machine is the only thing that decides when a session ends. It is
- * parameterised by `questionCount` rather than importing SESSION_LENGTH, so
- * the constant keeps its single home in config.ts while the rules live here.
- * That count is an upper bound: a session is as long as the bank allows, up to
- * it, and needs only one question to start.
+ * The machine is the only thing that decides when a session ends. A session
+ * asks every question in the bank, in random order, so its length is simply
+ * how many questions existed when it started. It needs at least one.
  *
  * `generating_report` is never persisted. Report generation happens in-process
  * during the request that submits the final answer, so the database only ever
@@ -33,8 +31,7 @@ export type MachineState =
 export type MachineEvent =
   | {
       readonly type: "START";
-      /** Upper bound on the session length, from SESSION_LENGTH. */
-      readonly questionCount: number;
+      /** How many questions the bank holds; becomes the session's length. */
       readonly availableQuestions: number;
     }
   | { readonly type: "SUBMIT_ANSWER" }
@@ -42,7 +39,6 @@ export type MachineEvent =
   | { readonly type: "REPORT_FAILED" };
 
 export type RejectionReason =
-  | "invalid_question_count"
   | "empty_question_bank"
   | "session_already_started"
   | "session_not_started"
@@ -70,19 +66,19 @@ export function transition(
 ): TransitionResult {
   if (event.type === "START") {
     if (state !== null) return reject("session_already_started");
-    if (!Number.isInteger(event.questionCount) || event.questionCount < 1) {
-      return reject("invalid_question_count");
-    }
-    if (event.availableQuestions < 1) {
+    if (
+      !Number.isInteger(event.availableQuestions) ||
+      event.availableQuestions < 1
+    ) {
       return reject("empty_question_bank");
     }
     return accept({
       status: "awaiting_answer",
       position: 1,
-      // SESSION_LENGTH is a maximum, not a quota. A bank smaller than that
-      // gives a shorter session rather than no session, and the length is
-      // snapshotted onto the row so the session stays self-describing.
-      questionCount: Math.min(event.questionCount, event.availableQuestions),
+      // The whole bank, so the length is whatever it held at this moment. It
+      // is snapshotted onto the row, which is what lets the bank grow later
+      // without changing how a finished session reads.
+      questionCount: event.availableQuestions,
     });
   }
 

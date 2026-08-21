@@ -30,7 +30,7 @@ async function seedBank(count: number): Promise<void> {
 }
 
 async function start(): Promise<string> {
-  const result = await createSession(h.db, N);
+  const result = await createSession(h.db);
   if (!result.ok) throw new Error(`expected a session, got ${result.reason}`);
   return result.sessionId;
 }
@@ -40,7 +40,7 @@ const answer = (id: string, text: string) =>
 
 describe("starting a session", () => {
   it("is refused only when the bank is empty", async () => {
-    const result = await createSession(h.db, N);
+    const result = await createSession(h.db);
     expect(result).toMatchObject({
       ok: false,
       reason: "empty_question_bank",
@@ -66,19 +66,25 @@ describe("starting a session", () => {
     expect(detail?.report).not.toBeNull();
   });
 
-  it("shortens the session to the bank when the bank is smaller", async () => {
-    await seedBank(N - 1);
+  it("is exactly as long as the bank, however big the bank is", async () => {
+    await seedBank(8);
     const id = await start();
 
     const [row] = await h.db.select().from(sessions).where(eq(sessions.id, id));
-    expect(row?.questionCount).toBe(N - 1);
-    expect(
-      await h.db.select().from(turns).where(eq(turns.sessionId, id)),
-    ).toHaveLength(N - 1);
+    expect(row?.questionCount).toBe(8);
+
+    const rows = await h.db
+      .select()
+      .from(turns)
+      .where(eq(turns.sessionId, id))
+      .orderBy(asc(turns.position));
+    expect(rows).toHaveLength(8);
+    // Every question appears exactly once, shuffled rather than sampled.
+    expect(new Set(rows.map((r) => r.questionText)).size).toBe(8);
   });
 
   it("creates every turn up front, in order, unanswered", async () => {
-    await seedBank(6);
+    await seedBank(N);
     const id = await start();
 
     const rows = await h.db
@@ -90,7 +96,7 @@ describe("starting a session", () => {
     expect(rows).toHaveLength(N);
     expect(rows.map((t) => t.position)).toEqual([1, 2, 3]);
     expect(rows.every((t) => t.answerText === null)).toBe(true);
-    // Questions are drawn without replacement.
+    // Every question, each exactly once.
     expect(new Set(rows.map((t) => t.questionText)).size).toBe(N);
   });
 
@@ -104,7 +110,7 @@ describe("starting a session", () => {
   });
 
   it("does not hand back questions that have not been asked yet", async () => {
-    await seedBank(6);
+    await seedBank(N);
     const id = await start();
 
     const detail = await getSessionDetail(h.db, id);
@@ -116,7 +122,7 @@ describe("starting a session", () => {
 
 describe("answering turn by turn", () => {
   it("persists answers in order", async () => {
-    await seedBank(6);
+    await seedBank(N);
     const id = await start();
     for (let i = 1; i <= N; i++) await answer(id, `Answer ${i}`);
 
@@ -135,7 +141,7 @@ describe("answering turn by turn", () => {
   });
 
   it("ends on the last answer and not before", async () => {
-    await seedBank(6);
+    await seedBank(N);
     const id = await start();
 
     for (let i = 1; i < N; i++) {
@@ -156,7 +162,7 @@ describe("answering turn by turn", () => {
   });
 
   it("refuses a further answer once the session has ended", async () => {
-    await seedBank(6);
+    await seedBank(N);
     const id = await start();
     for (let i = 1; i <= N; i++) await answer(id, `Answer ${i}`);
 
@@ -171,7 +177,7 @@ describe("answering turn by turn", () => {
   });
 
   it("refuses a blank answer and reports an unknown session", async () => {
-    await seedBank(6);
+    await seedBank(N);
     const id = await start();
     await expect(answer(id, "   ")).rejects.toThrow(/cannot be blank/i);
     expect(
@@ -182,7 +188,7 @@ describe("answering turn by turn", () => {
 
 describe("the transcript and report", () => {
   it("runs the whole journey and reads back", async () => {
-    await seedBank(6);
+    await seedBank(N);
     const id = await start();
     for (let i = 1; i <= N; i++) await answer(id, `Answer ${i}`);
 
@@ -203,7 +209,7 @@ describe("the transcript and report", () => {
   });
 
   it("hands the full transcript to the generator", async () => {
-    await seedBank(6);
+    await seedBank(N);
     const id = await start();
     for (let i = 1; i <= N; i++) await answer(id, `Answer ${i}`);
 
@@ -217,7 +223,7 @@ describe("the transcript and report", () => {
   });
 
   it("still saves the session and transcript when generation fails", async () => {
-    await seedBank(6);
+    await seedBank(N);
     h.reports.mode = "failure";
     const id = await start();
     for (let i = 1; i <= N; i++) await answer(id, `Answer ${i}`);
@@ -230,7 +236,7 @@ describe("the transcript and report", () => {
   });
 
   it("lists sessions with their progress", async () => {
-    await seedBank(6);
+    await seedBank(N);
     const id = await start();
     for (let i = 1; i <= N; i++) await answer(id, `Answer ${i}`);
 

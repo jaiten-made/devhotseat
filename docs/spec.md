@@ -127,7 +127,8 @@ app code depends on it and it is not part of the runtime.
 ## Question bank rules
 
 * Questions are added one at a time through the UI. Add and delete only.
-* A session picks its questions at random from the bank.
+* A session asks every question in the bank, shuffled into a random order.
+  Each question appears exactly once.
 * A session needs at least one question in the bank. Below that, block session
   start and say so. There is no minimum beyond one.
 * A turn stores the question text, not a foreign key to it. Deleting a question
@@ -135,12 +136,13 @@ app code depends on it and it is not part of the runtime.
 
 ## Session length
 
-* A session asks up to a fixed number of questions. Default 5. That number is a
-  ceiling, not a quota: a bank smaller than it gives a shorter session.
-* The ceiling is one named constant, `SESSION_LENGTH` in `src/config.ts`. With
-  a single package the browser imports it directly, but progress is still read
-  from server data, never from a counter the UI keeps. The length actually used
-  is snapshotted onto the session row, so sessions of different lengths coexist.
+* A session asks **every question in the bank**, in random order. There is no
+  fixed length and no cap: the bank's size at the moment the session starts is
+  the session's length.
+* That length is snapshotted onto the session row, so growing the bank later
+  does not change how a finished session reads, and sessions of different
+  lengths coexist. Progress is read from server data, never from a counter the
+  UI keeps.
 * The session ends automatically once the last answer is submitted, which
   triggers report generation. No end button, no early exit, no resume.
 * The state machine owns the count.
@@ -191,8 +193,8 @@ Three layers, no overlap. Don't write a test that belongs in a lower layer.
   * turns persist in order
   * the session auto-ends on the Nth answer and not before
   * answering an ended session is rejected
-  * starting a session with an empty bank is rejected, and a bank smaller than
-    the ceiling gives a correspondingly shorter session
+  * starting a session with an empty bank is rejected, and any other bank gives
+    a session exactly as long as the bank
   * deleting a question leaves old transcripts intact
   * a session with no report reads back cleanly
 * Runs against `hotseat_test`, never the dev DB, and refuses to start unless the
