@@ -31,8 +31,8 @@ test("add questions, run a session, read the transcript and report", async ({
   for (let turn = 1; turn <= 5; turn++) {
     await expect(page.getByText(`Question ${turn} of 5`)).toBeVisible();
 
-    // Mid-session the call bar's transcript drawer holds the answers given so
-    // far, and nothing else: the questions still to come must not leak.
+    // Mid-session the transcript panel holds the answers given so far, and
+    // nothing else: the questions still to come must not leak.
     if (turn === 3) {
       await page.getByRole("button", { name: "Transcript" }).click();
       await expect(page.getByText("This is answer number 1.")).toBeVisible();

@@ -8,9 +8,13 @@ export interface TranscriptTurn {
 }
 
 /**
- * The answers given so far, in a drawer above the call bar. devprep's live
- * transcript: capped height, scrolled to the newest turn, and rendered as
- * alternating labelled blocks rather than chat bubbles.
+ * The answers given so far, in a panel down the right of the room. devprep's
+ * live transcript: full height beside the stage, scrolled to the newest turn,
+ * and rendered as alternating labelled blocks rather than chat bubbles.
+ *
+ * Wide enough for a column of prose and no wider, so the stage keeps the middle
+ * of the room. Below `md` there is no room for two columns, so it slides over
+ * the stage instead of squeezing it.
  */
 export function TranscriptPanel({
   isOpen,
@@ -25,7 +29,7 @@ export function TranscriptPanel({
   const answered = turns.filter((turn) => turn.answerText !== null);
   const answeredCount = answered.length;
 
-  // Follow the newest turn while the drawer is open, and start at the bottom
+  // Follow the newest turn while the panel is open, and start at the bottom
   // when it is reopened. Nothing to follow until the first answer lands.
   useEffect(() => {
     if (!isOpen || answeredCount === 0) return;
@@ -35,7 +39,10 @@ export function TranscriptPanel({
   if (!isOpen) return null;
 
   return (
-    <div className="flex max-h-64 shrink-0 flex-col border-t bg-muted/40">
+    <aside
+      aria-label="Transcript"
+      className="absolute inset-y-0 right-0 z-10 flex w-80 max-w-[85%] shrink-0 flex-col border-l bg-background shadow-xl md:static md:max-w-none md:shadow-none"
+    >
       <div className="flex items-center justify-between border-b px-4 py-2">
         <span className="text-sm font-medium">Transcript</span>
         <Button
@@ -47,7 +54,7 @@ export function TranscriptPanel({
           Hide
         </Button>
       </div>
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+      <div className="flex-1 space-y-3 overflow-y-auto bg-muted/40 px-4 py-3">
         {answeredCount === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">
             No answers yet.
@@ -70,6 +77,6 @@ export function TranscriptPanel({
         )}
         <div ref={endRef} />
       </div>
-    </div>
+    </aside>
   );
 }

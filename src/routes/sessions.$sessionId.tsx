@@ -115,7 +115,8 @@ function isLastQuestion(session: SessionDetail): boolean {
 
 /**
  * The room the interview happens in, borrowed from devprep's meeting room: a
- * full-viewport column of header, stage, transcript drawer and turn control.
+ * full-viewport column of header, stage and turn control, with the transcript
+ * as a panel down its right side.
  *
  * It covers the app chrome for the duration of the call, the way devprep's
  * meeting room sits outside the sidebar layout. Fixed positioning rather than
@@ -124,7 +125,7 @@ function isLastQuestion(session: SessionDetail): boolean {
  * The bottom of the room is one wide `TurnBar` naming whose move it is, and
  * under it the incidentals as plain ghost buttons. Only the bar is ever filled,
  * so the thing that moves the conversation on cannot be mistaken for the thing
- * that opens a drawer. Hanging up lives in the header for the same reason.
+ * that opens a panel. Hanging up lives in the header for the same reason.
  */
 function Room({
   session,
@@ -144,64 +145,67 @@ function Room({
   const leave = () => navigate({ to: "/sessions" });
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background">
-      <header className="flex shrink-0 items-center gap-3 border-b px-4 py-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={leave}
-          className="size-9 shrink-0"
-          aria-label="Leave the session"
-        >
-          <ArrowLeft className="size-5" />
-        </Button>
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-semibold leading-tight">
-            Interview session
-          </p>
-          <p className="truncate text-sm text-muted-foreground">
-            Question {session.currentPosition} of {session.questionCount}
-          </p>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={leave}
-          className="shrink-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-        >
-          <PhoneOff className="size-4" />
-          Leave
-        </Button>
-      </header>
+    // A row, so the transcript stands beside the room rather than under it.
+    <div className="fixed inset-0 z-50 flex bg-background">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex shrink-0 items-center gap-3 border-b px-4 py-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={leave}
+            className="size-9 shrink-0"
+            aria-label="Leave the session"
+          >
+            <ArrowLeft className="size-5" />
+          </Button>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-semibold leading-tight">
+              Interview session
+            </p>
+            <p className="truncate text-sm text-muted-foreground">
+              Question {session.currentPosition} of {session.questionCount}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={leave}
+            className="shrink-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+          >
+            <PhoneOff className="size-4" />
+            Leave
+          </Button>
+        </header>
 
-      <main className="flex flex-1 flex-col items-center justify-center gap-6 overflow-y-auto px-4 py-6">
-        {children}
-      </main>
+        <main className="flex flex-1 flex-col items-center justify-center gap-6 overflow-y-auto px-4 py-6">
+          {children}
+        </main>
+
+        <div className="flex shrink-0 flex-col items-center gap-3 border-t px-4 py-5">
+          <TurnBar {...turn} />
+          <div className="flex flex-wrap items-center justify-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowTranscript((open) => !open)}
+              className={cn(
+                "text-muted-foreground",
+                showTranscript && "bg-accent text-accent-foreground",
+              )}
+            >
+              <FileText className="size-4" />
+              Transcript
+            </Button>
+            {secondaries}
+          </div>
+        </div>
+      </div>
 
       <TranscriptPanel
         isOpen={showTranscript}
         onToggle={() => setShowTranscript((open) => !open)}
         turns={session.turns}
       />
-
-      <div className="flex shrink-0 flex-col items-center gap-3 border-t px-4 py-5">
-        <TurnBar {...turn} />
-        <div className="flex flex-wrap items-center justify-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowTranscript((open) => !open)}
-            className={cn(
-              "text-muted-foreground",
-              showTranscript && "bg-accent text-accent-foreground",
-            )}
-          >
-            <FileText className="size-4" />
-            Transcript
-          </Button>
-          {secondaries}
-        </div>
-      </div>
     </div>
   );
 }
