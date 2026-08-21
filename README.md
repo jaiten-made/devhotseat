@@ -51,7 +51,9 @@ pnpm db:migrate
 pnpm dev
 ```
 
-The app is served at http://localhost:3000.
+The app is served at http://localhost:3000. Add questions on the first page,
+start a session once the bank holds at least five, then read the transcript and
+report from **Sessions**.
 
 ## Testing
 
@@ -75,6 +77,8 @@ pnpm lint
 | Path | Contents |
 | ---- | -------- |
 | `src/routes` | TanStack Router file routes and the app shell |
+| `src/components/ui` | shadcn/ui components |
+| `src/lib` | Query keys and query options |
 | `src/fn` | Server functions — the boundary the browser calls |
 | `src/server/services` | Question bank and session logic |
 | `src/server/session` | The interview state machine |
