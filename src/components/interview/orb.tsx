@@ -1,104 +1,56 @@
 import { Mic } from "lucide-react";
-import { type Ref, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import type { OrbState } from "@/lib/voice/machine";
 
-/** Tailwind's own ping easing, so the two paths look like one animation. */
-const PING_EASING = "cubic-bezier(0, 0, 0.2, 1)";
-
-/** One word's throb, short enough not to run into the next word. */
-const WORD_MS = 420;
-
 /**
- * The interviewer's avatar, carried over from devprep's meeting room: three
- * concentric circles that breathe.
+ * The interviewer's avatar: three concentric circles that say whose turn it is
+ * by colour, and by nothing else.
  *
- * Two things drive it, and both are the real audio rather than a fixed clock:
+ * Black while the interviewer is talking, green while it is the user's turn,
+ * grey when it is neither. It does not throb, ping, breathe or swell.
  *
- * - While the question is read, `pulse` ticks once per spoken word and the
- *   halo throbs on each tick. Until the first tick arrives the halo falls back
- *   to a steady ping, because not every voice reports word boundaries and a
- *   still avatar would read as a hung app.
- * - While listening, `--mic-level` swells the rings with how loudly you are
- *   actually speaking. `useMicLevel` writes it to the element this `ref`
- *   lands on.
+ * That is a deliberate reduction — see
+ * [21](../../../docs/adr/0021-the-avatar-is-two-colours.md). The animated
+ * version was driven by word-boundary events from `speechSynthesis` and by a
+ * second microphone stream feeding an `AnalyserNode`, which made the avatar the
+ * most complicated thing on the screen and, because both signals are
+ * unreliable on Chrome's network voices, an unreliable read on what was
+ * actually happening. Colour alone cannot go out of step with the state
+ * machine, because there is nothing else for it to be out of step with.
+ *
+ * A colour transition is kept: the hand-over is worth seeing, and it is driven
+ * by the state change itself rather than by a signal that has to be sampled.
  */
-export function Orb({
-  state,
-  pulse = 0,
-  ref,
-}: {
-  state: OrbState;
-  /** Increments once per spoken word. 0 means none have been reported. */
-  pulse?: number;
-  ref?: Ref<HTMLDivElement>;
-}) {
-  const haloRef = useRef<HTMLSpanElement>(null);
-  const resting = state === "idle" || state === "thinking";
-  const live = state === "speaking" || state === "listening";
-  // Word boundaries are all-or-nothing per voice, so one tick is enough to
-  // know this engine reports them and the steady ping can stand down.
-  const wordDriven = pulse > 0;
-
-  useEffect(() => {
-    if (pulse === 0) return;
-    haloRef.current?.animate(
-      [
-        { transform: "scale(0.9)", opacity: 0.5 },
-        { transform: "scale(1.7)", opacity: 0 },
-      ],
-      { duration: WORD_MS, easing: PING_EASING },
-    );
-  }, [pulse]);
-
-  // Louder speech pushes the rings out. The middle ring travels further than
-  // the core so the movement reads as breathing rather than as a jolt.
-  const swell = (factor: number) =>
-    state === "listening"
-      ? { transform: `scale(calc(1 + var(--mic-level, 0) * ${factor}))` }
-      : undefined;
-
+export function Orb({ state }: { state: OrbState }) {
   return (
-    <div
-      ref={ref}
-      className="relative flex size-40 items-center justify-center"
-    >
+    <div className="relative flex size-40 items-center justify-center">
       <span
-        ref={haloRef}
         className={cn(
-          "absolute inset-0 rounded-full",
+          "absolute inset-0 rounded-full transition-colors duration-500",
           state === "speaking" && "bg-primary/20",
-          state === "speaking" && !wordDriven && "animate-ping",
+          state === "listening" && "bg-success/20",
         )}
       />
       <span
-        style={swell(0.3)}
         className={cn(
           "absolute inset-4 rounded-full transition-colors duration-500",
           state === "idle" && "bg-muted",
-          state === "thinking" && "animate-pulse bg-muted",
-          state === "speaking" && "animate-pulse bg-primary/30",
-          // The pulse stays under the swell: if the second microphone stream
-          // is refused, --mic-level never moves and this is all the life the
-          // ring has.
-          state === "listening" && "animate-pulse bg-success/30",
-          state === "error" && "bg-destructive/20",
+          state === "speaking" && "bg-primary/30",
+          state === "listening" && "bg-success/30",
         )}
       />
       <span
-        style={swell(0.12)}
         className={cn(
           "relative flex size-24 items-center justify-center rounded-full shadow-lg transition-colors duration-500",
-          resting && "bg-muted",
+          state === "idle" && "bg-muted",
           state === "speaking" && "bg-primary",
           state === "listening" && "bg-success",
-          state === "error" && "bg-destructive/50",
         )}
       >
         <Mic
           className={cn(
             "size-8 transition-colors duration-300",
-            live ? "text-white" : "text-muted-foreground",
+            state === "idle" ? "text-muted-foreground" : "text-white",
           )}
         />
       </span>

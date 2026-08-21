@@ -7,6 +7,11 @@ import { useCallback, useEffect, useRef } from "react";
  * system ones from speech-dispatcher at all — so espeak and mbrola never
  * appear in the list even when installed. Chrome's own voices are better than
  * either, so they are what this prefers.
+ *
+ * Every one of them is remote: `localService` is false right across the list,
+ * so the audio is streamed rather than rendered on the machine. That is why a
+ * long question can stall part way through, and why `end` below is the
+ * engine's word for being finished rather than an observation of it.
  */
 const PREFERRED_VOICES = ["google us english", "google uk english", "google"];
 
@@ -34,14 +39,13 @@ const WATCHDOG_MS = 600;
  *
  * `onDone` fires on the real `end` event, never a timer, and also fires if
  * synthesis errors: a question that cannot be spoken must still let the turn
- * continue rather than stranding the session.
+ * continue rather than stranding the session. It is the only thing this
+ * reports — word boundaries used to be surfaced as well, to throb the avatar
+ * once per word, and went out with it.
  *
- * `onWord` fires as the engine passes each word, which is the only progress
- * signal synthesis gives out. There is no audio stream behind
- * `speechSynthesis` — it renders straight to the output device and exposes no
- * node to attach an analyser to — so word boundaries are as close to the
- * spoken audio as anything can get without paying for hosted speech. Not
- * every voice reports them, so callers must still work when it never fires.
+ * Nothing here can tell whether the audio has actually finished. `end` is the
+ * engine reporting on itself, and `speechSynthesis` exposes no audio node to
+ * check it against, so the caller opens the microphone on trust.
  */
 export function useSpeechSynthesis() {
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -53,7 +57,6 @@ export function useSpeechSynthesis() {
       outstanding.onstart = null;
       outstanding.onend = null;
       outstanding.onerror = null;
-      outstanding.onboundary = null;
       utteranceRef.current = null;
     }
     // Chrome drops the next utterance if cancel() is called when the queue is
@@ -73,7 +76,7 @@ export function useSpeechSynthesis() {
   }, []);
 
   const speak = useCallback(
-    (text: string, onDone: () => void, onWord?: () => void) => {
+    (text: string, onDone: () => void) => {
       if (typeof window === "undefined" || !("speechSynthesis" in window)) {
         onDone();
         return;
@@ -100,8 +103,8 @@ export function useSpeechSynthesis() {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "en-US";
       utterance.rate = 1;
-      const preferred = preferredVoice(window.speechSynthesis.getVoices());
-      if (preferred) utterance.voice = preferred;
+      const voice = preferredVoice(window.speechSynthesis.getVoices());
+      if (voice) utterance.voice = voice;
       utteranceRef.current = utterance;
 
       utterance.onstart = () => {
@@ -109,14 +112,6 @@ export function useSpeechSynthesis() {
       };
       utterance.onend = finish;
       utterance.onerror = abandon;
-      if (onWord) {
-        utterance.onboundary = (event) => {
-          // Engines that distinguish the two also report sentence boundaries,
-          // which would throb once per question rather than once per word.
-          if (event.name && event.name !== "word") return;
-          onWord();
-        };
-      }
 
       window.speechSynthesis.speak(utterance);
 

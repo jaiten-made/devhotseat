@@ -153,46 +153,61 @@ describe("describeSpeechError", () => {
 });
 
 describe("orbStateFor — the avatar's look for every voice state", () => {
-  // Every state is listed, so adding one forces a decision about how the
-  // avatar should look rather than defaulting to inert.
-  const cases: ReadonlyArray<
-    [label: string, from: VoiceState, hasFault: boolean, to: OrbState]
-  > = [
-    ["idle", idle, false, "thinking"],
-    ["speaking", speaking, false, "speaking"],
-    ["listening", listening, false, "listening"],
-    ["submitting", submitting, false, "thinking"],
-    ["blocked", blocked, false, "error"],
+  // Every state is listed twice over, so adding one forces a decision about
+  // how the avatar should look rather than defaulting to inert.
+  const cases: ReadonlyArray<[label: string, from: VoiceState, to: OrbState]> =
+    [
+      ["speaking", speaking, "speaking"],
+      ["listening", listening, "listening"],
+      // Neither party is talking, so the avatar claims neither colour.
+      ["idle", idle, "idle"],
+      ["submitting", submitting, "idle"],
+      // A blocked microphone renders an overlay over the stage; the avatar does
+      // not need to say it a second time in a colour of its own.
+      ["blocked", blocked, "idle"],
+    ];
 
-    // A recognition fault while the microphone is open takes precedence: the
-    // avatar has to stop reading as though it is happily listening.
-    ["listening with a fault", listening, true, "error"],
-    // Everywhere else the fault flag is not the avatar's business.
-    ["speaking with a fault", speaking, true, "speaking"],
-    ["submitting with a fault", submitting, true, "thinking"],
-    ["idle with a fault", idle, true, "thinking"],
-    ["blocked with a fault", blocked, true, "error"],
-  ];
-
-  for (const [label, from, hasFault, to] of cases) {
+  for (const [label, from, to] of cases) {
     it(`${label} -> ${to}`, () => {
-      expect(orbStateFor(from, hasFault)).toBe(to);
+      expect(orbStateFor(from)).toBe(to);
     });
   }
 
-  it("only pulses as speaking while the question is being read", () => {
-    // The one detail carried over from devprep's meeting room by name: the
-    // avatar animates as talking when, and only when, the app is talking.
-    const speakingStates = ([] as VoiceState[]).concat(
-      idle,
-      speaking,
-      listening,
-      submitting,
-      blocked,
-    );
-    const talking = speakingStates.filter(
-      (state) => orbStateFor(state, false) === "speaking",
-    );
+  it("has exactly one look per party, and no others", () => {
+    const looks = new Set(cases.map(([, from]) => orbStateFor(from)));
+    expect([...looks].sort()).toEqual(["idle", "listening", "speaking"]);
+  });
+});
+
+describe("the avatar and the microphone agree", () => {
+  // The rule the room obeys, written where it can fail a build: black while
+  // the interviewer talks, green when it is your turn, and no way to be heard
+  // in between. Both halves are checked together because each is already
+  // correct on its own — what broke in practice was them disagreeing.
+  const every: ReadonlyArray<VoiceState> = [
+    idle,
+    speaking,
+    listening,
+    submitting,
+    blocked,
+  ];
+
+  for (const state of every) {
+    it(`${state.status} -> ${orbStateFor(state)}: mic ${
+      shouldListen(state) ? "open" : "shut"
+    }`, () => {
+      // Green and an open microphone are the same fact, in both directions.
+      expect(orbStateFor(state) === "listening").toBe(shouldListen(state));
+      expect(orbStateFor(state) === "listening").toBe(canSubmit(state));
+    });
+  }
+
+  it("is never black and listening at once", () => {
+    const talking = every.filter((state) => orbStateFor(state) === "speaking");
     expect(talking).toEqual([speaking]);
+    for (const state of talking) {
+      expect(shouldListen(state)).toBe(false);
+      expect(canSubmit(state)).toBe(false);
+    }
   });
 });

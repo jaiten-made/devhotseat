@@ -1,5 +1,7 @@
 # 18. The avatar animates from the audio, not a clock
 
+> **Superseded by [21](0021-the-avatar-is-two-colours.md).**
+
 ## Decision
 
 While the question is read, the halo throbs once per word, driven by

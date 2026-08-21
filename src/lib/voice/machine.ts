@@ -83,11 +83,13 @@ export function canSubmit(state: VoiceState): boolean {
 }
 
 /**
- * The look the interviewer's avatar takes. Named after the activity rather
- * than the state it came from, because the typed turn has no voice loop and
- * still needs an avatar.
+ * The look the interviewer's avatar takes: black while the interviewer talks,
+ * green while it is the user's turn, inert when it is neither.
+ *
+ * Named after the activity rather than the state it came from, because the
+ * typed turn has no voice loop and still needs an avatar.
  */
-export type OrbState = "idle" | "thinking" | "speaking" | "listening" | "error";
+export type OrbState = "idle" | "speaking" | "listening";
 
 /**
  * Which look goes with the current voice state. Kept here with the states it
@@ -95,22 +97,24 @@ export type OrbState = "idle" | "thinking" | "speaking" | "listening" | "error";
  * than by eye — a stuck or wrongly coloured avatar is the one bug in this UI
  * that a user would notice immediately and a test would otherwise miss.
  *
- * `hasFault` folds in the recognition errors that are worth showing while the
- * microphone is nominally open, which the state alone cannot express.
+ * Whose turn it is, and nothing else. It takes no account of recognition
+ * faults: during one it is still the user's turn, so the avatar stays green
+ * and the error text below it says what is wrong. A blocked microphone is not
+ * the avatar's job either — that turn renders an overlay over the top.
  */
-export function orbStateFor(state: VoiceState, hasFault: boolean): OrbState {
+export function orbStateFor(state: VoiceState): OrbState {
   switch (state.status) {
-    case "blocked":
-      return "error";
     case "speaking":
       return "speaking";
     case "listening":
-      return hasFault ? "error" : "listening";
-    // Waiting on the turn or on the server: the same "something is coming"
-    // look, so a submit does not flash the avatar back to inert.
+      return "listening";
+    // Between turns: the interviewer is not talking and it is not the user's
+    // turn either, so the avatar claims neither. The turn bar says what is
+    // being waited on.
     case "idle":
     case "submitting":
-      return "thinking";
+    case "blocked":
+      return "idle";
   }
 }
 
