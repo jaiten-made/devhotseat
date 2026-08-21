@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /** Consecutive no-speech events tolerated before giving up. */
 const MAX_NO_SPEECH_RETRIES = 20;
@@ -152,6 +152,12 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
       // Already started; the existing instance is fine.
     }
   }, []);
+
+  // Leaving the room mid-answer must shut the microphone. Nothing else does:
+  // the effect that mirrors the machine only runs while mounted, and a live
+  // recogniser restarts itself from `onend`, so an unmount would otherwise
+  // leave it recording for the rest of the page's life.
+  useEffect(() => stop, [stop]);
 
   return {
     start,
