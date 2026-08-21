@@ -24,6 +24,10 @@ test("add questions, run a session, read the transcript and report", async ({
   await page.getByRole("button", { name: "Start a session" }).click();
   await expect(page.getByText("Question 1 of 5")).toBeVisible();
 
+  // These specs drive the text UI only: no microphone, no fake device flags.
+  // The same switch a user gets when speech is unavailable or unwanted.
+  await page.getByRole("button", { name: "Type instead" }).click();
+
   for (let turn = 1; turn <= 5; turn++) {
     await expect(page.getByText(`Question ${turn} of 5`)).toBeVisible();
     await page.getByLabel("Your answer").fill(`This is answer number ${turn}.`);

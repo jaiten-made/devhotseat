@@ -32,9 +32,9 @@ Practice an interview, then review how it went. Four parts, one journey:
 
 1. **Question bank.** I add interview questions by hand and they persist. I can
    see the list and delete from it.
-2. **Session.** The app asks a question from the bank, I type an answer, it asks
-   the next. Turn by turn, for a fixed number of questions. Every turn is saved
-   to Postgres as it happens.
+2. **Session.** The app reads a question from the bank aloud, I answer out loud,
+   it asks the next. Turn by turn. Typing is always available as well. Every
+   turn is saved to Postgres as it happens.
 3. **Transcript view.** I can open a past session and read the full Q&A exchange
    in the UI.
 4. **Feedback report.** When a session ends the AI produces a written report on
@@ -44,13 +44,16 @@ Feedback quality is explicitly v1-shallow. One prompt, prose out. No rubrics, no
 per-answer scoring, no comparison against previous sessions. The point is that
 the pipe exists and persists.
 
-Input is typed text. Voice is not in v1 in any form.
+Input is spoken, transcribed by the browser. Typing is kept as an equal
+alternative: it is the fallback when speech is unsupported or the microphone is
+refused, and it is what the end-to-end specs drive.
 
 ## Where AI is and isn't used
 
 The Gemini API is used for exactly one thing: generating the feedback report at
 the end of a session. Questions come from the bank I filled in by hand. Nothing
-calls the AI during the turn loop.
+calls the AI during the turn loop — speech recognition and synthesis are the
+browser's, not a hosted service.
 
 ## Non-goals for v1
 
@@ -62,6 +65,8 @@ Do not build, do not scaffold for:
 * Question categories, tags, difficulty, search, or ordering controls
 * Variable session length, user-chosen length, early exit, or resume
 * **SSR or server-rendered routes.** TanStack Start runs in SPA mode.
+* Cloud speech services. Voice uses the browser's built-in APIs only, so no new
+  dependency and no service-account credentials.
 * TanStack Table, Form, or Virtual. The lists here are short and plain.
 * Optimistic updates. Invalidate and refetch is fine at this scale.
 * Auth / users / multi-tenancy
@@ -69,8 +74,6 @@ Do not build, do not scaffold for:
 * Scoring, grading, rubrics, numeric ratings
 * Analytics, progress tracking, trends across sessions
 * Editing or deleting sessions
-* Voice, audio, speech-to-text, text-to-speech, and any test infrastructure for
-  them
 * Payments, email, notifications
 
 Cloud comes later. Design so it isn't blocked, but don't build it now.
@@ -204,7 +207,8 @@ Three layers, no overlap. Don't write a test that belongs in a lower layer.
 **Playwright e2e** (`e2e/`)
 
 * Drives the text UI only. No media permissions, no fake device flags, no audio
-  fixtures.
+  fixtures: the specs click "Type instead" and answer by typing, which is the
+  same path a user gets when speech is unavailable.
 * Thin by design. The integration layer already proves the flow works, so these
   prove the UI is wired to it.
 * One happy path: add questions, start a session, type N answers, see the

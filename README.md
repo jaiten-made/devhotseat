@@ -54,7 +54,9 @@ pnpm dev
 The app is served at http://localhost:3000. Add questions on the first page,
 start a session once the bank holds at least one, then read the transcript and
 report from **Sessions**. A session asks every question in the bank, in random
-order.
+order, reading each one aloud and transcribing your spoken answer. Typing is
+available at any time via **Type instead**, and is used automatically when the
+browser has no speech support or the microphone is refused.
 
 ## Testing
 
@@ -87,7 +89,7 @@ pnpm lint
 | ---- | -------- |
 | `src/routes` | TanStack Router file routes and the app shell |
 | `src/components/ui` | shadcn/ui components |
-| `src/lib` | Query keys and query options |
+| `src/lib` | Query keys, query options, and the voice loop |
 | `src/fn` | Server functions — the boundary the browser calls |
 | `src/server/services` | Question bank and session logic |
 | `src/server/session` | The interview state machine |
