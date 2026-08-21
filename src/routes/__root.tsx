@@ -31,7 +31,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "dev-hotseat" },
+      { title: "devhotseat" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),
@@ -50,7 +50,7 @@ function RootDocument({ children }: { children: ReactNode }) {
           <div className="mx-auto max-w-3xl px-6 py-10">
             <header className="mb-10 flex items-baseline gap-6 border-b pb-4">
               <Link to="/" className="font-semibold tracking-tight">
-                dev-hotseat
+                devhotseat
               </Link>
               <nav className="flex gap-4 text-sm text-muted-foreground">
                 <Link

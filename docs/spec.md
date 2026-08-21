@@ -1,4 +1,4 @@
-# dev-hotseat spec
+# devhotseat spec
 
 An AI interview practice tool I built for my own use, running locally.
 
@@ -12,10 +12,11 @@ Gemini API.
 
 Use these exactly. Do not invent variations.
 
-* Repo and root directory: `dev-hotseat`
-* Root `package.json` name: `dev-hotseat`, private, never published
-* Dev database: `hotseat`
-* Test database: `hotseat_test`
+* Repo and root directory: `devhotseat`
+* Root `package.json` name: `devhotseat`, private, never published
+* Dev database: `devhotseat`
+* Test database: `devhotseat_test`
+* Postgres role: `devhotseat`
 
 There is no package scope. The `@hotseat/api`, `@hotseat/web` and `@hotseat/db`
 packages existed briefly and were collapsed into one package (ADR 0009).
@@ -212,8 +213,8 @@ Three layers, no overlap. Don't write a test that belongs in a lower layer.
   * deleting a session removes its turns and its report, and leaves the bank
     and other sessions alone
   * a session with no report reads back cleanly
-* Runs against `hotseat_test`, never the dev DB, and refuses to start unless the
-  database name ends in `_test`.
+* Runs against `devhotseat_test`, never the dev DB, and refuses to start
+  unless the database name ends in `_test`.
 * Truncate between tests. Each test sets up its own data.
 
 **Playwright e2e** (`e2e/`)

@@ -1,4 +1,4 @@
-# dev-hotseat
+# devhotseat
 
 An AI interview practice tool built for one person to run on their own machine.
 Add interview questions by hand, practise a session of them one turn at a time,
@@ -29,7 +29,7 @@ pnpm install
 Create the database role and both databases:
 
 ```bash
-sudo systemctl enable --now postgresql@18-main && sudo -u postgres psql -p 5432 -c "CREATE ROLE hotseat LOGIN PASSWORD 'hotseat'" && sudo -u postgres createdb -p 5432 -O hotseat hotseat && sudo -u postgres createdb -p 5432 -O hotseat hotseat_test
+sudo systemctl enable --now postgresql@18-main && sudo -u postgres psql -p 5432 -c "CREATE ROLE devhotseat LOGIN PASSWORD 'devhotseat'" && sudo -u postgres createdb -p 5432 -O devhotseat devhotseat && sudo -u postgres createdb -p 5432 -O devhotseat devhotseat_test
 ```
 
 Copy the environment template. Adjust the connection strings if you changed
