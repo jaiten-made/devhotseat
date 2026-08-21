@@ -62,7 +62,9 @@ and a bar across the bottom says whose turn it is: press it to hand your answer
 back once you have finished. Replaying the question and showing the answers so
 far sit under it, and leaving is in the header.
 Typing is available at any time via **Type**, and is used automatically when
-the browser has no speech support or the microphone is refused.
+the browser has no speech support or the microphone is refused. A session you
+do not want to keep can be deleted from the **Sessions** list; its transcript
+and report go with it.
 
 ## Testing
 
@@ -95,7 +97,7 @@ pnpm lint
 | ---- | -------- |
 | `src/routes` | TanStack Router file routes and the app shell |
 | `src/components/ui` | shadcn/ui components |
-| `src/components/interview` | The call screen: avatar, controls, transcript drawer |
+| `src/components/interview` | The call screen: avatar, controls, transcript panel |
 | `src/lib` | Query keys, query options, and the voice loop |
 | `src/fn` | Server functions — the boundary the browser calls |
 | `src/server/services` | Question bank and session logic |

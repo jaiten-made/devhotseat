@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getDb, getReportGenerator } from "../server/deps";
 import {
   createSession,
+  deleteSession,
   getSessionDetail,
   listSessions,
   submitAnswer,
@@ -54,3 +55,13 @@ export const answerTurn = createServerFn({ method: "POST" })
     if (!result.ok) return { ok: false as const, reason: result.reason };
     return { ok: true as const, session: await getSessionDetail(db, data.id) };
   });
+
+/**
+ * Deletes a session with its turns and its report. Returns whether a row was
+ * removed, so a list that was already stale does not report a false success.
+ */
+export const removeSession = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.uuid() }))
+  .handler(async ({ data }) => ({
+    deleted: await deleteSession(getDb(), data.id),
+  }));

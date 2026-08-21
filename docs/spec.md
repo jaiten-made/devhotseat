@@ -36,7 +36,7 @@ Practice an interview, then review how it went. Four parts, one journey:
    it asks the next. Turn by turn. Typing is always available as well. Every
    turn is saved to Postgres as it happens.
 3. **Transcript view.** I can open a past session and read the full Q&A exchange
-   in the UI.
+   in the UI, and delete a session I do not want to keep.
 4. **Feedback report.** When a session ends the AI produces a written report on
    my answers, saved alongside the transcript and viewable in the UI.
 
@@ -73,7 +73,7 @@ Do not build, do not scaffold for:
 * Cloud deployment, Docker registries, CI/CD pipelines
 * Scoring, grading, rubrics, numeric ratings
 * Analytics, progress tracking, trends across sessions
-* Editing or deleting sessions
+* Editing a session, or changing what one asked after the fact
 * Payments, email, notifications
 
 Cloud comes later. Design so it isn't blocked, but don't build it now.
@@ -161,6 +161,16 @@ app code depends on it and it is not part of the runtime.
 * The prompt lives in its own file (`src/server/ai/prompt.md`) so I can iterate
   on it without touching code.
 
+## Deleting a session
+
+* A session can be deleted from the session list, behind a confirm step, the
+  same way a question is. Any status: nothing else clears an abandoned
+  in-progress session, since there is no early exit.
+* Deleting it takes its turns and its report with it, through the
+  `ON DELETE CASCADE` already on those foreign keys. No application-level
+  fan-out of deletes and no transaction to order. See ADR 0020.
+* The question bank is never touched by it.
+
 ## Drizzle rules
 
 * Schema lives in one module, `src/server/db/schema.ts`, and every row type is
@@ -199,6 +209,8 @@ Three layers, no overlap. Don't write a test that belongs in a lower layer.
   * starting a session with an empty bank is rejected, and any other bank gives
     a session exactly as long as the bank
   * deleting a question leaves old transcripts intact
+  * deleting a session removes its turns and its report, and leaves the bank
+    and other sessions alone
   * a session with no report reads back cleanly
 * Runs against `hotseat_test`, never the dev DB, and refuses to start unless the
   database name ends in `_test`.
@@ -217,6 +229,8 @@ Three layers, no overlap. Don't write a test that belongs in a lower layer.
   and a session whose report is missing.
 * One spec for deleting a question, since it is destructive and two-step:
   cancelling keeps the question, confirming removes it.
+* One spec for deleting a session, for the same reason, which also checks the
+  question bank survives it.
 * Runs the real stack against the test database with report generation stubbed.
   See ADR 0011.
 

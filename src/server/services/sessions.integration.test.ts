@@ -5,6 +5,7 @@ import { type Harness, startHarness } from "../test/harness";
 import { addQuestion, deleteQuestion, listQuestions } from "./questions";
 import {
   createSession,
+  deleteSession,
   getSessionDetail,
   listSessions,
   submitAnswer,
@@ -276,5 +277,61 @@ describe("deleting a question", () => {
     expect(after?.turns).toEqual(before?.turns);
     expect(after?.report).toEqual(before?.report);
     expect(after?.turns.every((t) => t.questionText.length > 0)).toBe(true);
+  });
+});
+
+describe("deleting a session", () => {
+  it("takes its turns and its report with it", async () => {
+    await seedBank(N);
+    const id = await start();
+    for (let i = 1; i <= N; i++) await answer(id, `Answer ${i}`);
+
+    // Everything the session owns exists first, or the assertions below would
+    // pass against a session that was never populated.
+    expect(await h.db.select().from(turns)).toHaveLength(N);
+    expect(await h.db.select().from(reports)).toHaveLength(1);
+
+    expect(await deleteSession(h.db, id)).toBe(true);
+
+    expect(await h.db.select().from(sessions)).toHaveLength(0);
+    expect(await h.db.select().from(turns)).toHaveLength(0);
+    expect(await h.db.select().from(reports)).toHaveLength(0);
+    expect(await getSessionDetail(h.db, id)).toBeNull();
+    expect(await listSessions(h.db)).toHaveLength(0);
+  });
+
+  it("deletes an in-progress session part way through", async () => {
+    await seedBank(N);
+    const id = await start();
+    await answer(id, "Only answer");
+
+    expect(await deleteSession(h.db, id)).toBe(true);
+    expect(await h.db.select().from(turns)).toHaveLength(0);
+  });
+
+  it("leaves the question bank and other sessions alone", async () => {
+    await seedBank(N);
+    const doomed = await start();
+    for (let i = 1; i <= N; i++) await answer(doomed, `Answer ${i}`);
+    const kept = await start();
+    await answer(kept, "Kept answer");
+
+    expect(await deleteSession(h.db, doomed)).toBe(true);
+
+    expect(await h.db.select().from(questions)).toHaveLength(N);
+    const survivor = await getSessionDetail(h.db, kept);
+    expect(survivor?.id).toBe(kept);
+    expect(survivor?.answeredCount).toBe(1);
+    expect(await h.db.select().from(turns)).toHaveLength(N);
+  });
+
+  it("reports false for an unknown session and deletes nothing", async () => {
+    await seedBank(N);
+    const id = await start();
+
+    expect(
+      await deleteSession(h.db, "11111111-1111-1111-1111-111111111111"),
+    ).toBe(false);
+    expect(await getSessionDetail(h.db, id)).not.toBeNull();
   });
 });

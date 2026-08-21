@@ -281,6 +281,27 @@ export async function listSessions(db: Database) {
   }));
 }
 
+/**
+ * Deletes a session and everything hanging off it: its turns and its report go
+ * with it through the `ON DELETE CASCADE` on their foreign keys, so this is one
+ * statement with no order to get wrong.
+ *
+ * Any status. An abandoned in-progress session has no other way out, since
+ * nothing ends a session early.
+ *
+ * Returns false when nothing matched, so a stale list can say so.
+ */
+export async function deleteSession(
+  db: Database,
+  sessionId: string,
+): Promise<boolean> {
+  const deleted = await db
+    .delete(sessions)
+    .where(eq(sessions.id, sessionId))
+    .returning({ id: sessions.id });
+  return deleted.length > 0;
+}
+
 async function countAnswered(db: Database, sessionId: string): Promise<number> {
   const [row] = await db
     .select({ value: count() })
