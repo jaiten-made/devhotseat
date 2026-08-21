@@ -61,9 +61,17 @@ report from **Sessions**.
 | ------- | ----- | ------ |
 | `pnpm test:unit` | Vitest, colocated `*.test.ts` | Pure logic — no database, no network |
 | `pnpm test:integration` | Vitest, `*.integration.test.ts` | Services against a real Postgres test database, with the report generator stubbed |
+| `pnpm test:e2e` | Playwright, `e2e/` | The UI driven against the running stack, with report generation stubbed |
 
-`pnpm test` runs both in order. The integration suite truncates its database
-between tests and refuses to run unless the name ends in `_test`.
+`pnpm test` runs all three in order. The integration and e2e suites use the
+test database, truncate between runs, and refuse to start unless the database
+name ends in `_test`, so the dev database is never touched.
+
+Playwright needs its browser once:
+
+```bash
+pnpm exec playwright install chromium
+```
 
 Other checks:
 
@@ -85,6 +93,7 @@ pnpm lint
 | `src/server/db` | Drizzle schema and database client |
 | `src/server/ai` | Report generator and its prompt |
 | `migrations` | Generated SQL migrations |
+| `e2e` | Playwright specs |
 | `docs/adr` | Decision records |
 
 ## Decisions

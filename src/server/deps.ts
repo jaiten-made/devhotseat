@@ -1,4 +1,5 @@
 import { createGeminiReportGenerator, type ReportGenerator } from "./ai/client";
+import { createStubReportGenerator } from "./ai/stub";
 import { createDatabase, type Database } from "./db";
 import { loadEnv } from "./env";
 
@@ -31,9 +32,10 @@ export function getDb(): Database {
 
 export function getReportGenerator(): ReportGenerator {
   if (!reportGenerator) {
-    reportGenerator = createGeminiReportGenerator({
-      apiKey: loadEnv().GEMINI_API_KEY,
-    });
+    reportGenerator =
+      process.env.HOTSEAT_STUB_REPORTS === "1"
+        ? createStubReportGenerator()
+        : createGeminiReportGenerator({ apiKey: loadEnv().GEMINI_API_KEY });
   }
   return reportGenerator;
 }
