@@ -18,7 +18,11 @@ export function useSpeechSynthesis() {
       utterance.onerror = null;
       utteranceRef.current = null;
     }
-    window.speechSynthesis.cancel();
+    // Chrome drops the next utterance if cancel() is called when the queue is
+    // already empty, so only cancel when there is something to stop.
+    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+      window.speechSynthesis.cancel();
+    }
   }, []);
 
   const speak = useCallback(
@@ -37,14 +41,6 @@ export function useSpeechSynthesis() {
         onDone();
       };
 
-      // A machine with no installed voices accepts speak() and does nothing:
-      // no end event, no error event. Without this the turn would wait on a
-      // signal that never comes.
-      if (window.speechSynthesis.getVoices().length === 0) {
-        finish();
-        return;
-      }
-
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "en-US";
       utterance.rate = 1;
@@ -55,9 +51,16 @@ export function useSpeechSynthesis() {
 
       window.speechSynthesis.speak(utterance);
 
-      // Completion still comes from the real end event, never from a timer
-      // estimating how long the sentence takes. This only catches the case
-      // where synthesis never engaged at all, which is otherwise silent.
+      // Completion comes from the real end event, never from a timer
+      // estimating how long the sentence takes.
+      //
+      // This watchdog only catches synthesis that never engaged at all — a
+      // machine with no installed voices accepts speak() and silently does
+      // nothing, firing neither end nor error, which would strand the turn.
+      // It deliberately does not pre-check getVoices(): that returns an empty
+      // array until voices load asynchronously, so checking it up front skips
+      // speech entirely on the first question. Queued speech sets `pending`
+      // straight away, so a real utterance never trips this.
       window.setTimeout(() => {
         if (
           !window.speechSynthesis.speaking &&
@@ -65,7 +68,7 @@ export function useSpeechSynthesis() {
         ) {
           finish();
         }
-      }, 250);
+      }, 600);
     },
     [cancel],
   );

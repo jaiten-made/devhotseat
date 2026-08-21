@@ -244,6 +244,18 @@ function VoiceTurn({
               ? "Submit final answer"
               : "Submit answer"}
         </Button>
+        <Button
+          variant="ghost"
+          disabled={voice.status === "speaking" || submit.isPending}
+          onClick={() => {
+            // Re-reading goes back through the machine so the microphone is
+            // closed first: an open mic would transcribe the app's own voice.
+            send({ type: "ASK" });
+            speak(question, () => send({ type: "SPOKEN" }));
+          }}
+        >
+          Read again
+        </Button>
         <Button variant="ghost" onClick={onUseTyping}>
           Type instead
         </Button>
