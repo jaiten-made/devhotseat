@@ -58,6 +58,9 @@ order, reading each one aloud and transcribing your spoken answer. Typing is
 available at any time via **Type instead**, and is used automatically when the
 browser has no speech support or the microphone is refused.
 
+On Linux the browser has no voices until they are installed system-wide, so
+nothing is read aloud until then: see [Voice setup](docs/voice-setup.md).
+
 ## Testing
 
 | Command | Layer | Covers |
