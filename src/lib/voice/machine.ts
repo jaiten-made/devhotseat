@@ -12,6 +12,10 @@
  * the question is still being read cancels it the way interrupting a person
  * would. See [22](../../../docs/adr/0022-the-user-declares-their-turn.md).
  *
+ * The same press starts the call. Arriving in the room reads nothing out: the
+ * first question waits on `START`, so the interview begins when the user is
+ * ready for it rather than the moment the page finishes loading.
+ *
  * Deliberately separate from the session machine in src/server/session. That
  * one owns what is persisted — which turn is current and when the session ends
  * — and is rebuilt from the database. This one owns what is happening in the
@@ -22,6 +26,11 @@
  */
 
 export type VoiceState =
+  /**
+   * In the room, nothing read out yet. The state a session is entered in: the
+   * first question waits here until the user says to begin.
+   */
+  | { readonly status: "waiting" }
   /** Waiting on the turn, or on the server. */
   | { readonly status: "idle" }
   /** The question is being read. The microphone is shut. */
@@ -39,6 +48,8 @@ export type VoiceState =
   | { readonly status: "blocked"; readonly reason: string };
 
 export type VoiceEvent =
+  /** The user pressed to begin the interview. Only the first press does this. */
+  | { readonly type: "START" }
   /** A new turn is ready to be read out. */
   | { readonly type: "ASK" }
   /** Speech synthesis finished, or could not start. */
@@ -72,6 +83,11 @@ export function voiceTransition(
   if (event.type === "RESET") return IDLE;
 
   switch (state.status) {
+    // Nothing is read until asked for. `ASK` is refused rather than obeyed,
+    // so an effect that fires on arrival cannot start the interview by itself.
+    case "waiting":
+      return event.type === "START" ? IDLE : state;
+
     case "idle":
       return event.type === "ASK" ? { status: "speaking" } : state;
 

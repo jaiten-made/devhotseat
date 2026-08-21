@@ -8,6 +8,7 @@ import {
   voiceTransition,
 } from "./machine";
 
+const waiting: VoiceState = { status: "waiting" };
 const idle: VoiceState = { status: "idle" };
 const speaking: VoiceState = { status: "speaking" };
 const ready: VoiceState = { status: "ready" };
@@ -15,6 +16,7 @@ const listening: VoiceState = { status: "listening" };
 const submitting: VoiceState = { status: "submitting" };
 const blocked: VoiceState = { status: "blocked", reason: "not-allowed" };
 
+const START: VoiceEvent = { type: "START" };
 const ASK: VoiceEvent = { type: "ASK" };
 const SPOKEN: VoiceEvent = { type: "SPOKEN" };
 const LISTEN: VoiceEvent = { type: "LISTEN" };
@@ -29,6 +31,18 @@ describe("voiceTransition — the full state x event matrix", () => {
   const cases: ReadonlyArray<
     [label: string, from: VoiceState, event: VoiceEvent, to: VoiceState]
   > = [
+    // Nothing but START moves the room off waiting, so arriving cannot start
+    // the interview by itself.
+    ["waiting + START", waiting, START, idle],
+    ["waiting + ASK", waiting, ASK, waiting],
+    ["waiting + SPOKEN", waiting, SPOKEN, waiting],
+    ["waiting + LISTEN", waiting, LISTEN, waiting],
+    ["waiting + SUBMIT", waiting, SUBMIT, waiting],
+    ["waiting + SUBMITTED", waiting, SUBMITTED, waiting],
+    ["waiting + SUBMIT_FAILED", waiting, SUBMIT_FAILED, waiting],
+
+    // START is spent: pressing it again mid-interview changes nothing.
+    ["idle + START", idle, START, idle],
     ["idle + ASK", idle, ASK, speaking],
     ["idle + SPOKEN", idle, SPOKEN, idle],
     ["idle + LISTEN", idle, LISTEN, idle],
@@ -36,6 +50,7 @@ describe("voiceTransition — the full state x event matrix", () => {
     ["idle + SUBMITTED", idle, SUBMITTED, idle],
     ["idle + SUBMIT_FAILED", idle, SUBMIT_FAILED, idle],
 
+    ["speaking + START", speaking, START, speaking],
     ["speaking + ASK", speaking, ASK, speaking],
     ["speaking + SPOKEN", speaking, SPOKEN, ready],
     // Cutting in over the question is allowed, and is the only route to an
@@ -45,6 +60,7 @@ describe("voiceTransition — the full state x event matrix", () => {
     ["speaking + SUBMITTED", speaking, SUBMITTED, speaking],
     ["speaking + SUBMIT_FAILED", speaking, SUBMIT_FAILED, speaking],
 
+    ["ready + START", ready, START, ready],
     ["ready + ASK", ready, ASK, speaking],
     ["ready + SPOKEN", ready, SPOKEN, ready],
     ["ready + LISTEN", ready, LISTEN, listening],
@@ -52,6 +68,7 @@ describe("voiceTransition — the full state x event matrix", () => {
     ["ready + SUBMITTED", ready, SUBMITTED, ready],
     ["ready + SUBMIT_FAILED", ready, SUBMIT_FAILED, ready],
 
+    ["listening + START", listening, START, listening],
     ["listening + ASK", listening, ASK, speaking],
     ["listening + SPOKEN", listening, SPOKEN, listening],
     ["listening + LISTEN", listening, LISTEN, listening],
@@ -59,6 +76,7 @@ describe("voiceTransition — the full state x event matrix", () => {
     ["listening + SUBMITTED", listening, SUBMITTED, listening],
     ["listening + SUBMIT_FAILED", listening, SUBMIT_FAILED, listening],
 
+    ["submitting + START", submitting, START, submitting],
     ["submitting + ASK", submitting, ASK, submitting],
     ["submitting + SPOKEN", submitting, SPOKEN, submitting],
     ["submitting + LISTEN", submitting, LISTEN, submitting],
@@ -66,6 +84,7 @@ describe("voiceTransition — the full state x event matrix", () => {
     ["submitting + SUBMITTED", submitting, SUBMITTED, idle],
     ["submitting + SUBMIT_FAILED", submitting, SUBMIT_FAILED, listening],
 
+    ["blocked + START", blocked, START, blocked],
     ["blocked + ASK", blocked, ASK, blocked],
     ["blocked + SPOKEN", blocked, SPOKEN, blocked],
     ["blocked + LISTEN", blocked, LISTEN, blocked],
@@ -79,6 +98,7 @@ describe("voiceTransition — the full state x event matrix", () => {
   });
 
   it.each([
+    ["waiting", waiting],
     ["idle", idle],
     ["speaking", speaking],
     ["ready", ready],
@@ -91,6 +111,30 @@ describe("voiceTransition — the full state x event matrix", () => {
 
   it("RESET leaves the blocked state", () => {
     expect(voiceTransition(blocked, RESET)).toEqual(idle);
+  });
+});
+
+describe("starting the interview", () => {
+  it("reads nothing until the user says to begin", () => {
+    // The effect in the room sends ASK for whichever question is current, and
+    // it runs on arrival. Waiting has to absorb that, or the interview starts
+    // talking at a tab that may have been opened and left.
+    expect(voiceTransition(waiting, ASK)).toEqual(waiting);
+    expect(voiceTransition(waiting, START)).toEqual(idle);
+  });
+
+  it("hands over to the ordinary turn loop once started", () => {
+    let state = voiceTransition(waiting, START);
+    state = voiceTransition(state, ASK);
+    expect(state).toEqual(speaking);
+  });
+
+  it("cannot be re-entered, so later turns follow on by themselves", () => {
+    // Nothing transitions back to waiting: after the first answer the loop
+    // returns to idle, where ASK reads the next question without a press.
+    const afterAnswer = voiceTransition(submitting, SUBMITTED);
+    expect(afterAnswer).toEqual(idle);
+    expect(voiceTransition(afterAnswer, ASK)).toEqual(speaking);
   });
 });
 
@@ -144,15 +188,15 @@ describe("one turn, start to finish", () => {
 describe("guards", () => {
   it("opens the microphone only while listening", () => {
     expect(
-      [idle, speaking, ready, submitting, blocked].map(shouldListen),
-    ).toEqual([false, false, false, false, false]);
+      [waiting, idle, speaking, ready, submitting, blocked].map(shouldListen),
+    ).toEqual([false, false, false, false, false, false]);
     expect(shouldListen(listening)).toBe(true);
   });
 
   it("allows submitting only while listening", () => {
-    expect([idle, speaking, ready, submitting, blocked].map(canSubmit)).toEqual(
-      [false, false, false, false, false],
-    );
+    expect(
+      [waiting, idle, speaking, ready, submitting, blocked].map(canSubmit),
+    ).toEqual([false, false, false, false, false, false]);
     expect(canSubmit(listening)).toBe(true);
   });
 
@@ -164,7 +208,7 @@ describe("guards", () => {
   });
 
   it("ignores a press where there is nothing to answer", () => {
-    for (const state of [idle, submitting, blocked]) {
+    for (const state of [waiting, idle, submitting, blocked]) {
       expect(voiceTransition(state, LISTEN)).toEqual(state);
     }
   });

@@ -56,9 +56,10 @@ The app is served at http://localhost:3000. Add questions on the first page,
 start a session once the bank holds at least one, then read the transcript and
 report from **Sessions**. A session asks every question in the bank, in random
 order, reading each one aloud and transcribing your spoken answer. It runs as a
-call screen: the bar across the bottom is pressed once to start talking and
-again to hand your answer back, and the avatar in the middle is green only
-while the microphone is actually open. You can press to talk over a question
+call screen: entering it reads nothing out until you press to begin, after
+which the bar across the bottom is pressed once to start talking and again to
+hand your answer back, and the avatar in the middle is green only while the
+microphone is actually open. You can press to talk over a question
 that is still being read, which stops it. Replaying the question and showing
 the answers so far sit under the bar, and leaving is in the header.
 Typing is available at any time via **Type**, and is used automatically when

@@ -7,6 +7,7 @@ import {
   Mic,
   MicOff,
   PhoneOff,
+  Play,
   Send,
   Volume2,
 } from "lucide-react";
@@ -257,10 +258,21 @@ function voiceTurnBar(
   session: SessionDetail,
   voice: VoiceState,
   hasWords: boolean,
+  onStart: () => void,
   onStartTalking: () => void,
   onSubmit: () => void,
 ): TurnBarProps {
   switch (voice.status) {
+    // Nothing has been read yet, and nothing will be until this is pressed.
+    // Entering the room is not consent to be talked at: the tab may have been
+    // opened minutes ago, or in the background.
+    case "waiting":
+      return {
+        icon: <Play className="size-6" />,
+        title: "Start the interview",
+        hint: "Press when you are ready. The first question will be read aloud.",
+        onClick: onStart,
+      };
     // Pressable while the question is still being read: interrupting is
     // allowed, and the hint says so rather than telling you to wait.
     case "speaking":
@@ -325,7 +337,8 @@ function VoiceTurn({
   session: SessionDetail;
   onUseTyping: () => void;
 }) {
-  const [voice, setVoice] = useState<VoiceState>({ status: "idle" });
+  // Entered waiting, not idle: see `voiceTurnBar`'s first case.
+  const [voice, setVoice] = useState<VoiceState>({ status: "waiting" });
   const send = useCallback(
     (event: VoiceEvent) => setVoice((state) => voiceTransition(state, event)),
     [],
@@ -341,7 +354,12 @@ function VoiceTurn({
   // Read each question once. Keyed on the turn so a re-render cannot start the
   // voice again half way through a sentence.
   const spokenForRef = useRef<number | null>(null);
+  const waiting = voice.status === "waiting";
   useEffect(() => {
+    // The first question is not read until the user starts the interview.
+    // Only the first: `waiting` is the state the room is entered in and
+    // nothing returns to it, so later turns still follow on by themselves.
+    if (waiting) return;
     if (position === null || spokenForRef.current === position) return;
     spokenForRef.current = position;
     // Shut the microphone here rather than leaving it to the effect below.
@@ -353,7 +371,15 @@ function VoiceTurn({
     recognition.reset();
     send({ type: "ASK" });
     speak(question, () => send({ type: "SPOKEN" }));
-  }, [position, question, speak, send, recognition.reset, recognition.stop]);
+  }, [
+    waiting,
+    position,
+    question,
+    speak,
+    send,
+    recognition.reset,
+    recognition.stop,
+  ]);
 
   // The microphone is open in exactly one state, so mirror that here.
   const listening = shouldListen(voice);
@@ -379,6 +405,8 @@ function VoiceTurn({
   // Interrupting is what makes the missing completion signal harmless: the
   // voice is silenced here, so the microphone is never open while the app is
   // talking, whatever `speechSynthesis` believes about being finished.
+  const start = () => send({ type: "START" });
+
   const startTalking = () => {
     cancel();
     send({ type: "LISTEN" });
@@ -432,7 +460,14 @@ function VoiceTurn({
     return (
       <Room
         session={session}
-        turn={voiceTurnBar(session, voice, false, startTalking, handleSubmit)}
+        turn={voiceTurnBar(
+          session,
+          voice,
+          false,
+          start,
+          startTalking,
+          handleSubmit,
+        )}
         secondaries={typeAction}
       >
         <Stage session={session}>
@@ -450,14 +485,21 @@ function VoiceTurn({
   return (
     <Room
       session={session}
-      turn={voiceTurnBar(session, voice, hasWords, startTalking, handleSubmit)}
+      turn={voiceTurnBar(
+        session,
+        voice,
+        hasWords,
+        start,
+        startTalking,
+        handleSubmit,
+      )}
       secondaries={
         <>
           <Button
             variant="ghost"
             size="sm"
             onClick={readAgain}
-            disabled={submit.isPending}
+            disabled={submit.isPending || waiting}
             className="text-muted-foreground"
           >
             <Volume2 className="size-4" />

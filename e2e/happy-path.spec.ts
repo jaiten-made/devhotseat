@@ -24,6 +24,13 @@ test("add questions, run a session, read the transcript and report", async ({
   await page.getByRole("button", { name: "Start a session" }).click();
   await expect(page.getByText("Question 1 of 5")).toBeVisible();
 
+  // Arriving reads nothing out: the room waits to be started. Asserted here
+  // because it is the one thing the spoken loop does before any microphone is
+  // involved, so it is reachable from a browser with no audio at all.
+  await expect(
+    page.getByRole("button", { name: /^Start the interview/ }),
+  ).toBeVisible();
+
   // These specs drive the text UI only: no microphone, no fake device flags.
   // The same switch a user gets when speech is unavailable or unwanted.
   await page.getByRole("button", { name: "Type" }).click();
