@@ -58,8 +58,9 @@ report from **Sessions**. A session asks every question in the bank, in random
 order, reading each one aloud and transcribing your spoken answer. It runs as a
 call screen: the avatar in the middle throbs once per word while the question
 is being read, then turns green and swells with how loudly you are speaking,
-and the controls along the bottom submit the answer, replay the question, show
-the answers so far, or leave.
+and a bar across the bottom says whose turn it is: press it to hand your answer
+back once you have finished. Replaying the question and showing the answers so
+far sit under it, and leaving is in the header.
 Typing is available at any time via **Type**, and is used automatically when
 the browser has no speech support or the microphone is refused.
 

@@ -42,11 +42,15 @@ test("add questions, run a session, read the transcript and report", async ({
       await expect(page.getByText("This is answer number 1.")).toBeHidden();
     }
 
+    // The turn control is only a button once there is an answer to hand over,
+    // so before typing there is nothing to press.
+    await expect(page.getByText("Your turn")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Submit/ })).toHaveCount(0);
+
     await page.getByLabel("Your answer").fill(`This is answer number ${turn}.`);
     await page
       .getByRole("button", {
-        name: turn === 5 ? "Submit final" : "Submit",
-        exact: true,
+        name: turn === 5 ? /^Submit final answer/ : /^Submit answer/,
       })
       .click();
   }

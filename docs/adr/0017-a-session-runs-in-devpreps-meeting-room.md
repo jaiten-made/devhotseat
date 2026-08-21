@@ -3,7 +3,7 @@
 ## Decision
 
 An in-progress session is a full-viewport call screen, not a page in the app
-shell: header, avatar stage, transcript drawer, and a bar of round controls.
+shell: header, avatar stage, transcript drawer, and a turn control (ADR 19).
 The parts are ports of devprep's meeting room, in `src/components/interview`.
 
 The avatar is three concentric circles. The outer halo expands only while the

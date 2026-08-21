@@ -11,6 +11,7 @@ import {
   Volume2,
 } from "lucide-react";
 import {
+  type ComponentProps,
   type ReactNode,
   type Ref,
   useCallback,
@@ -19,10 +20,10 @@ import {
   useState,
 } from "react";
 import {
-  ControlButton,
   ErrorOverlay,
   Orb,
   TranscriptPanel,
+  TurnBar,
 } from "@/components/interview";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,6 +53,8 @@ export const Route = createFileRoute("/sessions/$sessionId")({
 type SessionDetail = NonNullable<
   Awaited<ReturnType<typeof import("@/fn/sessions").fetchSession>>
 >;
+
+type TurnBarProps = ComponentProps<typeof TurnBar>;
 
 function SessionView() {
   const { sessionId } = Route.useParams();
@@ -110,35 +113,31 @@ function isLastQuestion(session: SessionDetail): boolean {
   return session.currentPosition === session.questionCount;
 }
 
-function submitLabel(session: SessionDetail): string {
-  return isLastQuestion(session) ? "Submit final" : "Submit";
-}
-
 /**
  * The room the interview happens in, borrowed from devprep's meeting room: a
- * full-viewport column of header, stage, transcript drawer and call bar.
+ * full-viewport column of header, stage, transcript drawer and turn control.
  *
  * It covers the app chrome for the duration of the call, the way devprep's
  * meeting room sits outside the sidebar layout. Fixed positioning rather than
  * a layout route keeps the change to this one screen.
  *
- * The room owns the two controls that mean the same thing whichever way the
- * answer is given — the transcript drawer and hanging up — and each input mode
- * supplies the ones in between.
+ * The bottom of the room is one wide `TurnBar` naming whose move it is, and
+ * under it the incidentals as plain ghost buttons. Only the bar is ever filled,
+ * so the thing that moves the conversation on cannot be mistaken for the thing
+ * that opens a drawer. Hanging up lives in the header for the same reason.
  */
 function Room({
   session,
-  status,
-  busy,
+  turn,
+  secondaries,
   children,
-  controls,
 }: {
   session: SessionDetail;
-  status: string;
-  /** Whether the status line should breathe, i.e. something is happening. */
-  busy: boolean;
+  /** Whose turn it is, and the move if it is yours. */
+  turn: TurnBarProps;
+  /** The incidentals this input mode adds beside the transcript toggle. */
+  secondaries: ReactNode;
   children: ReactNode;
-  controls: ReactNode;
 }) {
   const navigate = useNavigate();
   const [showTranscript, setShowTranscript] = useState(false);
@@ -164,18 +163,19 @@ function Room({
             Question {session.currentPosition} of {session.questionCount}
           </p>
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={leave}
+          className="shrink-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+        >
+          <PhoneOff className="size-4" />
+          Leave
+        </Button>
       </header>
 
       <main className="flex flex-1 flex-col items-center justify-center gap-6 overflow-y-auto px-4 py-6">
         {children}
-        <p
-          className={cn(
-            "text-sm text-muted-foreground",
-            busy && "animate-pulse",
-          )}
-        >
-          {status}
-        </p>
       </main>
 
       <TranscriptPanel
@@ -184,20 +184,23 @@ function Room({
         turns={session.turns}
       />
 
-      <div className="flex shrink-0 flex-wrap items-center justify-center gap-4 border-t px-4 py-6 sm:gap-6">
-        <ControlButton
-          icon={<FileText className="size-5" />}
-          label="Transcript"
-          onClick={() => setShowTranscript((open) => !open)}
-          active={showTranscript}
-        />
-        {controls}
-        <ControlButton
-          icon={<PhoneOff className="size-5" />}
-          label="Leave"
-          onClick={leave}
-          destructive
-        />
+      <div className="flex shrink-0 flex-col items-center gap-3 border-t px-4 py-5">
+        <TurnBar {...turn} />
+        <div className="flex flex-wrap items-center justify-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowTranscript((open) => !open)}
+            className={cn(
+              "text-muted-foreground",
+              showTranscript && "bg-accent text-accent-foreground",
+            )}
+          >
+            <FileText className="size-4" />
+            Transcript
+          </Button>
+          {secondaries}
+        </div>
       </div>
     </div>
   );
@@ -229,12 +232,6 @@ function Stage({
         {currentQuestion(session)}
       </h1>
       {children}
-      {isLastQuestion(session) && (
-        <p className="max-w-sm text-center text-sm text-warning">
-          This is the last question. Submitting it ends the session and writes
-          your feedback report.
-        </p>
-      )}
     </>
   );
 }
@@ -253,6 +250,67 @@ function TurnLoop({ session }: { session: SessionDetail }) {
       onUseVoice={supported ? () => setPreferTyping(false) : null}
     />
   );
+}
+
+/**
+ * The voice loop as the turn control sees it. Pressable in exactly one case:
+ * the microphone is open *and* something has been heard, so the bar is never
+ * offering a hand-over that would be thrown away as empty.
+ */
+function voiceTurnBar(
+  session: SessionDetail,
+  voice: VoiceState,
+  hasWords: boolean,
+  onSubmit: () => void,
+): TurnBarProps {
+  switch (voice.status) {
+    case "speaking":
+      return {
+        icon: <Volume2 className="size-6" />,
+        title: "Interviewer's turn",
+        hint: "Reading the question aloud…",
+      };
+    case "listening":
+      if (!hasWords) {
+        return {
+          icon: <Mic className="size-6 animate-pulse" />,
+          title: "Your turn",
+          hint: "Start speaking — your words appear above.",
+        };
+      }
+      return isLastQuestion(session)
+        ? {
+            icon: <Mic className="size-6" />,
+            title: "Your turn",
+            hint: "Tap when you have finished. This ends the session and writes your feedback report.",
+            tone: "warning",
+            onClick: onSubmit,
+          }
+        : {
+            icon: <Mic className="size-6" />,
+            title: "Your turn",
+            hint: "Tap when you have finished answering.",
+            onClick: onSubmit,
+          };
+    case "submitting":
+      return {
+        icon: <Send className="size-6" />,
+        title: "Saving your answer…",
+        hint: "Handing back to the interviewer.",
+      };
+    case "blocked":
+      return {
+        icon: <MicOff className="size-6" />,
+        title: "Microphone unavailable",
+        hint: describeSpeechError(voice.reason),
+      };
+    default:
+      return {
+        icon: <Volume2 className="size-6" />,
+        title: "Getting ready…",
+        hint: "The interviewer is about to ask the question.",
+      };
+  }
 }
 
 /** The spoken loop: the question is read aloud, then the microphone opens. */
@@ -340,14 +398,17 @@ function VoiceTurn({
       ? recognition.error
       : null;
 
-  const status =
-    voice.status === "speaking"
-      ? "Reading the question…"
-      : voice.status === "listening"
-        ? "Listening…"
-        : voice.status === "submitting"
-          ? "Saving…"
-          : "Getting ready…";
+  const typeAction = (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={onUseTyping}
+      className="text-muted-foreground"
+    >
+      <Keyboard className="size-4" />
+      Type
+    </Button>
+  );
 
   // A blocked microphone ends the spoken loop for this turn: the stage keeps
   // the question on screen and the only way forward is typing.
@@ -355,16 +416,8 @@ function VoiceTurn({
     return (
       <Room
         session={session}
-        status="Microphone unavailable"
-        busy={false}
-        controls={
-          <ControlButton
-            icon={<Keyboard className="size-5" />}
-            label="Type"
-            onClick={onUseTyping}
-            active
-          />
-        }
+        turn={voiceTurnBar(session, voice, false, handleSubmit)}
+        secondaries={typeAction}
       >
         <Stage session={session} orbState="error">
           <ErrorOverlay message={describeSpeechError(voice.reason)}>
@@ -375,46 +428,26 @@ function VoiceTurn({
     );
   }
 
+  const heard = recognition.finalTranscript || recognition.interimTranscript;
+  const hasWords = heard.trim() !== "";
+
   return (
     <Room
       session={session}
-      status={status}
-      busy={voice.status !== "idle"}
-      controls={
+      turn={voiceTurnBar(session, voice, hasWords, handleSubmit)}
+      secondaries={
         <>
-          {/* Mirrors the microphone rather than driving it: the machine owns
-              when it opens, so this is a light, not a switch. */}
-          <ControlButton
-            icon={
-              recognition.isListening ? (
-                <Mic className="size-5" />
-              ) : (
-                <MicOff className="size-5" />
-              )
-            }
-            label={recognition.isListening ? "Listening" : "Mic off"}
-            onClick={() => {}}
-            disabled
-            active={recognition.isListening}
-          />
-          <ControlButton
-            icon={<Send className="size-5" />}
-            label={submit.isPending ? "Saving…" : submitLabel(session)}
-            onClick={handleSubmit}
-            disabled={!canSubmit(voice) || submit.isPending}
-            active={canSubmit(voice)}
-          />
-          <ControlButton
-            icon={<Volume2 className="size-5" />}
-            label="Read again"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={readAgain}
             disabled={voice.status === "speaking" || submit.isPending}
-          />
-          <ControlButton
-            icon={<Keyboard className="size-5" />}
-            label="Type"
-            onClick={onUseTyping}
-          />
+            className="text-muted-foreground"
+          >
+            <Volume2 className="size-4" />
+            Read again
+          </Button>
+          {typeAction}
         </>
       }
     >
@@ -427,7 +460,7 @@ function VoiceTurn({
         {/* Live captions: committed words plain, words still in flight italic. */}
         {canSubmit(voice) && (
           <p className="max-w-lg text-center text-sm">
-            {recognition.finalTranscript || recognition.interimTranscript ? (
+            {hasWords ? (
               <>
                 <span className="text-foreground/70">
                   {recognition.finalTranscript}
@@ -479,28 +512,47 @@ function TypedTurn({
     submit.mutate(answer, { onSuccess: () => setAnswer("") });
   };
 
+  // Same rule as the spoken loop: the bar is only a button once there is an
+  // answer to hand over.
+  const last = isLastQuestion(session);
+  const turn: TurnBarProps = submit.isPending
+    ? {
+        icon: <Send className="size-6" />,
+        title: "Saving your answer…",
+        hint: "Handing back to the interviewer.",
+      }
+    : answer.trim() === ""
+      ? {
+          icon: <Keyboard className="size-6" />,
+          title: "Your turn",
+          hint: "Type your answer above.",
+        }
+      : {
+          icon: <Send className="size-6" />,
+          title: last ? "Submit final answer" : "Submit answer",
+          hint: last
+            ? "This ends the session and writes your feedback report."
+            : "Hands the turn back to the interviewer.",
+          tone: last ? "warning" : "default",
+          onClick: handleSubmit,
+        };
+
   return (
     <Room
       session={session}
-      status={submit.isPending ? "Saving…" : "Type your answer"}
-      busy={submit.isPending}
-      controls={
-        <>
-          <ControlButton
-            icon={<Send className="size-5" />}
-            label={submit.isPending ? "Saving…" : submitLabel(session)}
-            onClick={handleSubmit}
-            disabled={answer.trim() === "" || submit.isPending}
-            active={answer.trim() !== ""}
-          />
-          {onUseVoice && (
-            <ControlButton
-              icon={<Mic className="size-5" />}
-              label="Voice"
-              onClick={onUseVoice}
-            />
-          )}
-        </>
+      turn={turn}
+      secondaries={
+        onUseVoice && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onUseVoice}
+            className="text-muted-foreground"
+          >
+            <Mic className="size-4" />
+            Voice
+          </Button>
+        )
       }
     >
       {/* The avatar stays put so switching input modes does not change rooms,
