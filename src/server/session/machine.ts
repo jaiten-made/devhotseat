@@ -8,6 +8,8 @@
  * The machine is the only thing that decides when a session ends. It is
  * parameterised by `questionCount` rather than importing SESSION_LENGTH, so
  * the constant keeps its single home in config.ts while the rules live here.
+ * That count is an upper bound: a session is as long as the bank allows, up to
+ * it, and needs only one question to start.
  *
  * `generating_report` is never persisted. Report generation happens in-process
  * during the request that submits the final answer, so the database only ever
@@ -31,6 +33,7 @@ export type MachineState =
 export type MachineEvent =
   | {
       readonly type: "START";
+      /** Upper bound on the session length, from SESSION_LENGTH. */
       readonly questionCount: number;
       readonly availableQuestions: number;
     }
@@ -40,7 +43,7 @@ export type MachineEvent =
 
 export type RejectionReason =
   | "invalid_question_count"
-  | "not_enough_questions"
+  | "empty_question_bank"
   | "session_already_started"
   | "session_not_started"
   | "session_already_ended"
@@ -70,13 +73,16 @@ export function transition(
     if (!Number.isInteger(event.questionCount) || event.questionCount < 1) {
       return reject("invalid_question_count");
     }
-    if (event.availableQuestions < event.questionCount) {
-      return reject("not_enough_questions");
+    if (event.availableQuestions < 1) {
+      return reject("empty_question_bank");
     }
     return accept({
       status: "awaiting_answer",
       position: 1,
-      questionCount: event.questionCount,
+      // SESSION_LENGTH is a maximum, not a quota. A bank smaller than that
+      // gives a shorter session rather than no session, and the length is
+      // snapshotted onto the row so the session stays self-describing.
+      questionCount: Math.min(event.questionCount, event.availableQuestions),
     });
   }
 

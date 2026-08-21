@@ -128,17 +128,19 @@ app code depends on it and it is not part of the runtime.
 
 * Questions are added one at a time through the UI. Add and delete only.
 * A session picks its questions at random from the bank.
-* If the bank has fewer questions than the session length, block session start
-  and tell me how many more I need. Do not start a short session.
+* A session needs at least one question in the bank. Below that, block session
+  start and say so. There is no minimum beyond one.
 * A turn stores the question text, not a foreign key to it. Deleting a question
   later must not blank out or corrupt an old transcript.
 
 ## Session length
 
-* A session is a fixed number of questions. Default 5.
-* The count is one named constant, `SESSION_LENGTH` in `src/config.ts`. With a
-  single package the browser imports it directly, but progress is still read
-  from server data, never from a counter the UI keeps.
+* A session asks up to a fixed number of questions. Default 5. That number is a
+  ceiling, not a quota: a bank smaller than it gives a shorter session.
+* The ceiling is one named constant, `SESSION_LENGTH` in `src/config.ts`. With
+  a single package the browser imports it directly, but progress is still read
+  from server data, never from a counter the UI keeps. The length actually used
+  is snapshotted onto the session row, so sessions of different lengths coexist.
 * The session ends automatically once the last answer is submitted, which
   triggers report generation. No end button, no early exit, no resume.
 * The state machine owns the count.
@@ -189,7 +191,8 @@ Three layers, no overlap. Don't write a test that belongs in a lower layer.
   * turns persist in order
   * the session auto-ends on the Nth answer and not before
   * answering an ended session is rejected
-  * starting a session with too few questions in the bank is rejected
+  * starting a session with an empty bank is rejected, and a bank smaller than
+    the ceiling gives a correspondingly shorter session
   * deleting a question leaves old transcripts intact
   * a session with no report reads back cleanly
 * Runs against `hotseat_test`, never the dev DB, and refuses to start unless the

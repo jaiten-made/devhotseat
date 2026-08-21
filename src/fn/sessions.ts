@@ -18,21 +18,16 @@ export const fetchSession = createServerFn({ method: "GET" })
   .handler(async ({ data }) => getSessionDetail(getDb(), data.id));
 
 /**
- * Starts a session, or reports why it cannot start. A bank holding fewer
- * questions than a session needs is an expected answer, not an exception, so
- * the UI can render "add N more" without catching anything.
+ * Starts a session, or reports why it cannot start. An empty bank is an
+ * expected answer, not an exception, so the UI can say so without catching
+ * anything.
  */
 export const startSession = createServerFn({ method: "POST" }).handler(
   async () => {
     const db = getDb();
     const result = await createSession(db, SESSION_LENGTH);
     if (!result.ok) {
-      return {
-        ok: false as const,
-        reason: result.reason,
-        have: result.have,
-        need: result.need,
-      };
+      return { ok: false as const, reason: result.reason, have: result.have };
     }
     return {
       ok: true as const,

@@ -166,28 +166,6 @@ describe("transition — the full state x event matrix", () => {
 });
 
 describe("starting a session", () => {
-  it("requires the bank to hold at least as many questions as the session length", () => {
-    expect(
-      transition(null, {
-        type: "START",
-        questionCount: 5,
-        availableQuestions: 4,
-      }),
-    ).toEqual({ ok: false, reason: "not_enough_questions" });
-  });
-
-  it("allows a bank holding exactly the session length", () => {
-    const result = transition(null, {
-      type: "START",
-      questionCount: 5,
-      availableQuestions: 5,
-    });
-    expect(result).toEqual({
-      ok: true,
-      state: { status: "awaiting_answer", position: 1, questionCount: 5 },
-    });
-  });
-
   it("rejects an empty bank", () => {
     expect(
       transition(null, {
@@ -195,7 +173,57 @@ describe("starting a session", () => {
         questionCount: 5,
         availableQuestions: 0,
       }),
-    ).toEqual({ ok: false, reason: "not_enough_questions" });
+    ).toEqual({ ok: false, reason: "empty_question_bank" });
+  });
+
+  it("starts on a single question", () => {
+    expect(
+      transition(null, {
+        type: "START",
+        questionCount: 5,
+        availableQuestions: 1,
+      }),
+    ).toEqual({
+      ok: true,
+      state: { status: "awaiting_answer", position: 1, questionCount: 1 },
+    });
+  });
+
+  // SESSION_LENGTH is a ceiling, not a quota: a smaller bank gives a shorter
+  // session rather than no session.
+  it.each([
+    [1, 1],
+    [4, 4],
+    [5, 5],
+    [9, 5],
+  ])("a bank of %i questions gives a session of %i", (available, expected) => {
+    expect(
+      transition(null, {
+        type: "START",
+        questionCount: 5,
+        availableQuestions: available,
+      }),
+    ).toEqual({
+      ok: true,
+      state: {
+        status: "awaiting_answer",
+        position: 1,
+        questionCount: expected,
+      },
+    });
+  });
+
+  it("ends a one-question session on its only answer", () => {
+    const started = transition(null, {
+      type: "START",
+      questionCount: 5,
+      availableQuestions: 1,
+    });
+    if (!started.ok) throw new Error("expected a session");
+    expect(transition(started.state, SUBMIT)).toEqual({
+      ok: true,
+      state: { status: "generating_report", questionCount: 1 },
+    });
   });
 
   // SESSION_LENGTH is edited by hand during testing, so a nonsense value must

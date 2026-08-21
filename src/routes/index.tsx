@@ -61,8 +61,10 @@ function QuestionBank() {
   }
 
   const bank = questions.data;
-  const missing = SESSION_LENGTH - bank.length;
-  const canStart = missing <= 0;
+  // SESSION_LENGTH is a maximum: one question is enough to start, and a
+  // smaller bank simply gives a shorter session.
+  const canStart = bank.length > 0;
+  const upcomingLength = Math.min(SESSION_LENGTH, bank.length);
 
   return (
     <section>
@@ -70,7 +72,7 @@ function QuestionBank() {
         Question bank
       </h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        A session asks {SESSION_LENGTH} of these, picked at random.
+        A session asks up to {SESSION_LENGTH} of these, picked at random.
       </p>
 
       <form
@@ -122,16 +124,20 @@ function QuestionBank() {
 
       <div className="mt-8 border-t pt-6">
         {canStart ? (
-          <Button onClick={() => begin.mutate()} disabled={begin.isPending}>
-            {begin.isPending ? "Starting…" : "Start a session"}
-          </Button>
+          <>
+            <Button onClick={() => begin.mutate()} disabled={begin.isPending}>
+              {begin.isPending ? "Starting…" : "Start a session"}
+            </Button>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This session will ask {upcomingLength}{" "}
+              {upcomingLength === 1 ? "question" : "questions"}.
+            </p>
+          </>
         ) : (
           <>
             <Button disabled>Start a session</Button>
             <p className="mt-2 text-sm text-muted-foreground">
-              Add {missing} more {missing === 1 ? "question" : "questions"} to
-              start a session. A session needs {SESSION_LENGTH} and the bank has{" "}
-              {bank.length}.
+              Add at least one question to start a session.
             </p>
           </>
         )}

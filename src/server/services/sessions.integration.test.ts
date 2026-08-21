@@ -39,24 +39,42 @@ const answer = (id: string, text: string) =>
   submitAnswer(h.db, h.reports, id, text);
 
 describe("starting a session", () => {
-  it("is refused when the bank holds fewer questions than a session needs", async () => {
-    await seedBank(N - 1);
-
+  it("is refused only when the bank is empty", async () => {
     const result = await createSession(h.db, N);
     expect(result).toMatchObject({
       ok: false,
-      reason: "not_enough_questions",
-      have: N - 1,
-      need: N,
+      reason: "empty_question_bank",
+      have: 0,
     });
 
-    // A short session must not exist at all.
     expect(await h.db.select().from(sessions)).toHaveLength(0);
     expect(await h.db.select().from(turns)).toHaveLength(0);
   });
 
-  it("is refused when the bank is empty", async () => {
-    expect(await createSession(h.db, N)).toMatchObject({ ok: false, have: 0 });
+  it("starts on a single question and ends after one answer", async () => {
+    await seedBank(1);
+    const id = await start();
+
+    const [row] = await h.db.select().from(sessions).where(eq(sessions.id, id));
+    expect(row?.questionCount).toBe(1);
+    expect(await h.db.select().from(turns)).toHaveLength(1);
+
+    await answer(id, "My only answer.");
+    const detail = await getSessionDetail(h.db, id);
+    expect(detail?.status).toBe("completed");
+    expect(detail?.turns).toHaveLength(1);
+    expect(detail?.report).not.toBeNull();
+  });
+
+  it("shortens the session to the bank when the bank is smaller", async () => {
+    await seedBank(N - 1);
+    const id = await start();
+
+    const [row] = await h.db.select().from(sessions).where(eq(sessions.id, id));
+    expect(row?.questionCount).toBe(N - 1);
+    expect(
+      await h.db.select().from(turns).where(eq(turns.sessionId, id)),
+    ).toHaveLength(N - 1);
   });
 
   it("creates every turn up front, in order, unanswered", async () => {

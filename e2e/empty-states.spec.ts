@@ -7,26 +7,36 @@ test("an empty question bank blocks starting a session", async ({ page }) => {
 
   await expect(page.getByText("No questions yet")).toBeVisible();
   await expect(
-    page.getByText("Add 5 more questions to start a session"),
+    page.getByText("Add at least one question to start a session"),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Start a session" }),
   ).toBeDisabled();
 });
 
-test("a partly filled bank says how many more are needed", async ({ page }) => {
+test("a single question is enough to start a shorter session", async ({
+  page,
+}) => {
   await resetDatabase();
   await page.goto("/");
 
-  await page.getByLabel("New question").fill("Only question?");
+  await page.getByLabel("New question").fill("The only question?");
   await page.getByRole("button", { name: "Add", exact: true }).click();
 
   await expect(
-    page.getByText("Add 4 more questions to start a session"),
+    page.getByText("This session will ask 1 question."),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Start a session" }),
-  ).toBeDisabled();
+  const start = page.getByRole("button", { name: "Start a session" });
+  await expect(start).toBeEnabled();
+
+  await start.click();
+  await expect(page.getByText("Question 1 of 1")).toBeVisible();
+
+  await page.getByLabel("Your answer").fill("My only answer.");
+  await page.getByRole("button", { name: "Submit final answer" }).click();
+
+  await expect(page.getByRole("heading", { name: "Transcript" })).toBeVisible();
+  await expect(page.getByText("1 of 1 answered")).toBeVisible();
 });
 
 test("no sessions yet reads as an empty list, not an error", async ({

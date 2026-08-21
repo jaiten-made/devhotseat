@@ -37,12 +37,14 @@ export type CreateSessionResult =
       readonly ok: false;
       readonly reason: RejectionReason;
       readonly have: number;
-      readonly need: number;
     };
 
 /**
  * Starts a session: picks its questions at random, copies their text onto the
  * turns, and inserts every turn up front with no answer yet.
+ *
+ * `sessionLength` is a maximum. A bank holding fewer than that yields a shorter
+ * session; only an empty bank is refused.
  */
 export async function createSession(
   db: Database,
@@ -57,8 +59,11 @@ export async function createSession(
     availableQuestions: have,
   });
   if (!started.ok) {
-    return { ok: false, reason: started.reason, have, need: sessionLength };
+    return { ok: false, reason: started.reason, have };
   }
+
+  // The machine decides the length, capping it at what the bank can supply.
+  const questionCount = started.state.questionCount;
 
   const sessionId = await db.transaction(async (tx) => {
     const picked = await tx
@@ -66,11 +71,11 @@ export async function createSession(
       .from(questions)
       // The query builder cannot express ORDER BY random(), so this is raw SQL.
       .orderBy(sql`random()`)
-      .limit(sessionLength);
+      .limit(questionCount);
 
     const [session] = await tx
       .insert(sessions)
-      .values({ questionCount: sessionLength })
+      .values({ questionCount })
       .returning({ id: sessions.id });
     if (!session) throw new Error("Insert returned no session row.");
 
