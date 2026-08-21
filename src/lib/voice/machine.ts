@@ -83,6 +83,38 @@ export function canSubmit(state: VoiceState): boolean {
 }
 
 /**
+ * The look the interviewer's avatar takes. Named after the activity rather
+ * than the state it came from, because the typed turn has no voice loop and
+ * still needs an avatar.
+ */
+export type OrbState = "idle" | "thinking" | "speaking" | "listening" | "error";
+
+/**
+ * Which look goes with the current voice state. Kept here with the states it
+ * is derived from, and pure, so the mapping is covered by unit tests rather
+ * than by eye — a stuck or wrongly coloured avatar is the one bug in this UI
+ * that a user would notice immediately and a test would otherwise miss.
+ *
+ * `hasFault` folds in the recognition errors that are worth showing while the
+ * microphone is nominally open, which the state alone cannot express.
+ */
+export function orbStateFor(state: VoiceState, hasFault: boolean): OrbState {
+  switch (state.status) {
+    case "blocked":
+      return "error";
+    case "speaking":
+      return "speaking";
+    case "listening":
+      return hasFault ? "error" : "listening";
+    // Waiting on the turn or on the server: the same "something is coming"
+    // look, so a submit does not flash the avatar back to inert.
+    case "idle":
+    case "submitting":
+      return "thinking";
+  }
+}
+
+/**
  * Turns a Web Speech error code into something that says what to do about it.
  *
  * `network` is the one worth naming explicitly: recognition is a hosted

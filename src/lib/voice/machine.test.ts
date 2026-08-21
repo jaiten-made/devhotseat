@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   canSubmit,
   describeSpeechError,
+  type OrbState,
+  orbStateFor,
   shouldListen,
   type VoiceEvent,
   type VoiceState,
@@ -147,5 +149,50 @@ describe("describeSpeechError", () => {
 
   it("falls back to quoting an unknown code rather than swallowing it", () => {
     expect(describeSpeechError("something-new")).toContain("something-new");
+  });
+});
+
+describe("orbStateFor — the avatar's look for every voice state", () => {
+  // Every state is listed, so adding one forces a decision about how the
+  // avatar should look rather than defaulting to inert.
+  const cases: ReadonlyArray<
+    [label: string, from: VoiceState, hasFault: boolean, to: OrbState]
+  > = [
+    ["idle", idle, false, "thinking"],
+    ["speaking", speaking, false, "speaking"],
+    ["listening", listening, false, "listening"],
+    ["submitting", submitting, false, "thinking"],
+    ["blocked", blocked, false, "error"],
+
+    // A recognition fault while the microphone is open takes precedence: the
+    // avatar has to stop reading as though it is happily listening.
+    ["listening with a fault", listening, true, "error"],
+    // Everywhere else the fault flag is not the avatar's business.
+    ["speaking with a fault", speaking, true, "speaking"],
+    ["submitting with a fault", submitting, true, "thinking"],
+    ["idle with a fault", idle, true, "thinking"],
+    ["blocked with a fault", blocked, true, "error"],
+  ];
+
+  for (const [label, from, hasFault, to] of cases) {
+    it(`${label} -> ${to}`, () => {
+      expect(orbStateFor(from, hasFault)).toBe(to);
+    });
+  }
+
+  it("only pulses as speaking while the question is being read", () => {
+    // The one detail carried over from devprep's meeting room by name: the
+    // avatar animates as talking when, and only when, the app is talking.
+    const speakingStates = ([] as VoiceState[]).concat(
+      idle,
+      speaking,
+      listening,
+      submitting,
+      blocked,
+    );
+    const talking = speakingStates.filter(
+      (state) => orbStateFor(state, false) === "speaking",
+    );
+    expect(talking).toEqual([speaking]);
   });
 });

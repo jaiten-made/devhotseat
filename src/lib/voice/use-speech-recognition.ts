@@ -8,6 +8,12 @@ export interface UseSpeechRecognitionReturn {
   stop: () => void;
   /** Snapshot read from refs, so a click reads the latest text, not React's. */
   getTranscript: () => string;
+  /**
+   * The words the engine has committed, for display only. `getTranscript` is
+   * still what gets submitted; this exists so the UI can show committed and
+   * in-flight words differently without printing the interim text twice.
+   */
+  finalTranscript: string;
   interimTranscript: string;
   isListening: boolean;
   error: string | null;
@@ -23,6 +29,7 @@ export interface UseSpeechRecognitionReturn {
  * words the engine had only just committed.
  */
 export function useSpeechRecognition(): UseSpeechRecognitionReturn {
+  const [finalTranscript, setFinalTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +56,7 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
     accumulatedRef.current = "";
     interimRef.current = "";
     noSpeechRetriesRef.current = 0;
+    setFinalTranscript("");
     setInterimTranscript("");
     setError(null);
   }, []);
@@ -80,6 +88,7 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
           if (result?.isFinal) {
             accumulatedRef.current =
               `${accumulatedRef.current} ${text.trim()}`.trim();
+            setFinalTranscript(accumulatedRef.current);
             noSpeechRetriesRef.current = 0;
           } else {
             interim += text;
@@ -132,6 +141,7 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
     start,
     stop,
     getTranscript,
+    finalTranscript,
     interimTranscript,
     isListening,
     error,

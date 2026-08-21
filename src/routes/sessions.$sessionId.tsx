@@ -1,15 +1,39 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Mic, Volume2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import {
+  ArrowLeft,
+  FileText,
+  Keyboard,
+  Mic,
+  MicOff,
+  PhoneOff,
+  Send,
+  Volume2,
+} from "lucide-react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import {
+  ControlButton,
+  ErrorOverlay,
+  Orb,
+  TranscriptPanel,
+} from "@/components/interview";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { answerTurn } from "@/fn/sessions";
 import { sessionQuery } from "@/lib/queries";
 import { queryKeys } from "@/lib/query-keys";
+import { cn } from "@/lib/utils";
 import {
   canSubmit,
   describeSpeechError,
+  type OrbState,
+  orbStateFor,
   shouldListen,
   type VoiceEvent,
   type VoiceState,
@@ -80,26 +104,131 @@ function currentQuestion(session: SessionDetail): string {
   );
 }
 
-function Progress({ session }: { session: SessionDetail }) {
+function isLastQuestion(session: SessionDetail): boolean {
+  return session.currentPosition === session.questionCount;
+}
+
+function submitLabel(session: SessionDetail): string {
+  return isLastQuestion(session) ? "Submit final" : "Submit";
+}
+
+/**
+ * The room the interview happens in, borrowed from devprep's meeting room: a
+ * full-viewport column of header, stage, transcript drawer and call bar.
+ *
+ * It covers the app chrome for the duration of the call, the way devprep's
+ * meeting room sits outside the sidebar layout. Fixed positioning rather than
+ * a layout route keeps the change to this one screen.
+ *
+ * The room owns the two controls that mean the same thing whichever way the
+ * answer is given — the transcript drawer and hanging up — and each input mode
+ * supplies the ones in between.
+ */
+function Room({
+  session,
+  status,
+  busy,
+  children,
+  controls,
+}: {
+  session: SessionDetail;
+  status: string;
+  /** Whether the status line should breathe, i.e. something is happening. */
+  busy: boolean;
+  children: ReactNode;
+  controls: ReactNode;
+}) {
+  const navigate = useNavigate();
+  const [showTranscript, setShowTranscript] = useState(false);
+  const leave = () => navigate({ to: "/sessions" });
+
   return (
-    <>
-      <p className="mb-2 text-sm text-muted-foreground">
-        Question {session.currentPosition} of {session.questionCount}
-      </p>
-      <h1 className="mb-6 text-2xl font-semibold tracking-tight">
-        {currentQuestion(session)}
-      </h1>
-    </>
+    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      <header className="flex shrink-0 items-center gap-3 border-b px-4 py-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={leave}
+          className="size-9 shrink-0"
+          aria-label="Leave the session"
+        >
+          <ArrowLeft className="size-5" />
+        </Button>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-semibold leading-tight">
+            Interview session
+          </p>
+          <p className="truncate text-sm text-muted-foreground">
+            Question {session.currentPosition} of {session.questionCount}
+          </p>
+        </div>
+      </header>
+
+      <main className="flex flex-1 flex-col items-center justify-center gap-6 overflow-y-auto px-4 py-6">
+        {children}
+        <p
+          className={cn(
+            "text-sm text-muted-foreground",
+            busy && "animate-pulse",
+          )}
+        >
+          {status}
+        </p>
+      </main>
+
+      <TranscriptPanel
+        isOpen={showTranscript}
+        onToggle={() => setShowTranscript((open) => !open)}
+        turns={session.turns}
+      />
+
+      <div className="flex shrink-0 flex-wrap items-center justify-center gap-4 border-t px-4 py-6 sm:gap-6">
+        <ControlButton
+          icon={<FileText className="size-5" />}
+          label="Transcript"
+          onClick={() => setShowTranscript((open) => !open)}
+          active={showTranscript}
+        />
+        {controls}
+        <ControlButton
+          icon={<PhoneOff className="size-5" />}
+          label="Leave"
+          onClick={leave}
+          destructive
+        />
+      </div>
+    </div>
   );
 }
 
-function LastQuestionNotice({ session }: { session: SessionDetail }) {
-  if (session.currentPosition !== session.questionCount) return null;
+/**
+ * The question, and the last thing on the stage that is fixed for every mode.
+ * Sized to be readable from a lean-back distance, since the point of the room
+ * is that you are talking rather than reading.
+ */
+function Stage({
+  session,
+  orbState,
+  children,
+}: {
+  session: SessionDetail;
+  orbState: OrbState;
+  children?: ReactNode;
+}) {
   return (
-    <p className="mt-4 text-sm text-warning">
-      This is the last question. Submitting it ends the session and writes your
-      feedback report.
-    </p>
+    <>
+      <Orb state={orbState} />
+      <h1 className="max-w-xl text-balance text-center text-xl font-semibold tracking-tight">
+        {currentQuestion(session)}
+      </h1>
+      {children}
+      {isLastQuestion(session) && (
+        <p className="max-w-sm text-center text-sm text-warning">
+          This is the last question. Submitting it ends the session and writes
+          your feedback report.
+        </p>
+      )}
+    </>
   );
 }
 
@@ -185,17 +314,18 @@ function VoiceTurn({
     });
   };
 
-  if (voice.status === "blocked") {
-    return (
-      <section>
-        <Progress session={session} />
-        <p className="mb-4 rounded-lg border border-dashed border-warning/50 bg-warning/5 p-4 text-sm">
-          {describeSpeechError(voice.reason)}
-        </p>
-        <Button onClick={onUseTyping}>Type my answer instead</Button>
-      </section>
-    );
-  }
+  const readAgain = () => {
+    // Re-reading goes back through the machine so the microphone is closed
+    // first: an open mic would transcribe the app's own voice.
+    send({ type: "ASK" });
+    speak(question, () => send({ type: "SPOKEN" }));
+  };
+
+  // `no-speech` is retried silently by the hook, so it is not shown as a fault.
+  const fault =
+    recognition.error && recognition.error !== "no-speech"
+      ? recognition.error
+      : null;
 
   const status =
     voice.status === "speaking"
@@ -206,77 +336,111 @@ function VoiceTurn({
           ? "Saving…"
           : "Getting ready…";
 
+  // A blocked microphone ends the spoken loop for this turn: the stage keeps
+  // the question on screen and the only way forward is typing.
+  if (voice.status === "blocked") {
+    return (
+      <Room
+        session={session}
+        status="Microphone unavailable"
+        busy={false}
+        controls={
+          <ControlButton
+            icon={<Keyboard className="size-5" />}
+            label="Type"
+            onClick={onUseTyping}
+            active
+          />
+        }
+      >
+        <Stage session={session} orbState="error">
+          <ErrorOverlay message={describeSpeechError(voice.reason)}>
+            <Button onClick={onUseTyping}>Type my answer instead</Button>
+          </ErrorOverlay>
+        </Stage>
+      </Room>
+    );
+  }
+
   return (
-    <section>
-      <Progress session={session} />
-
-      <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
-        {voice.status === "listening" ? (
-          <Mic className="size-4 text-success" />
-        ) : (
-          <Volume2 className="size-4" />
-        )}
-        <span>{status}</span>
-      </div>
-
-      <p className="mb-6 min-h-24 rounded-lg border p-4 whitespace-pre-wrap">
-        {recognition.getTranscript() || recognition.interimTranscript ? (
-          <>
-            {recognition.getTranscript()}
-            {recognition.interimTranscript && (
-              <span className="text-muted-foreground italic">
-                {" "}
-                {recognition.interimTranscript}
+    <Room
+      session={session}
+      status={status}
+      busy={voice.status !== "idle"}
+      controls={
+        <>
+          {/* Mirrors the microphone rather than driving it: the machine owns
+              when it opens, so this is a light, not a switch. */}
+          <ControlButton
+            icon={
+              recognition.isListening ? (
+                <Mic className="size-5" />
+              ) : (
+                <MicOff className="size-5" />
+              )
+            }
+            label={recognition.isListening ? "Listening" : "Mic off"}
+            onClick={() => {}}
+            disabled
+            active={recognition.isListening}
+          />
+          <ControlButton
+            icon={<Send className="size-5" />}
+            label={submit.isPending ? "Saving…" : submitLabel(session)}
+            onClick={handleSubmit}
+            disabled={!canSubmit(voice) || submit.isPending}
+            active={canSubmit(voice)}
+          />
+          <ControlButton
+            icon={<Volume2 className="size-5" />}
+            label="Read again"
+            onClick={readAgain}
+            disabled={voice.status === "speaking" || submit.isPending}
+          />
+          <ControlButton
+            icon={<Keyboard className="size-5" />}
+            label="Type"
+            onClick={onUseTyping}
+          />
+        </>
+      }
+    >
+      <Stage session={session} orbState={orbStateFor(voice, fault !== null)}>
+        {/* Live captions: committed words plain, words still in flight italic. */}
+        {canSubmit(voice) && (
+          <p className="max-w-lg text-center text-sm">
+            {recognition.finalTranscript || recognition.interimTranscript ? (
+              <>
+                <span className="text-foreground/70">
+                  {recognition.finalTranscript}
+                </span>
+                {recognition.interimTranscript && (
+                  <span className="italic text-muted-foreground">
+                    {" "}
+                    {recognition.interimTranscript}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="italic text-muted-foreground">
+                Your answer appears here as you speak.
               </span>
             )}
-          </>
-        ) : (
-          <span className="text-muted-foreground">
-            Your answer appears here as you speak.
-          </span>
+          </p>
         )}
-      </p>
 
-      <div className="flex items-center gap-3">
-        <Button
-          onClick={handleSubmit}
-          disabled={!canSubmit(voice) || submit.isPending}
-        >
-          {submit.isPending
-            ? "Saving…"
-            : session.currentPosition === session.questionCount
-              ? "Submit final answer"
-              : "Submit answer"}
-        </Button>
-        <Button
-          variant="ghost"
-          disabled={voice.status === "speaking" || submit.isPending}
-          onClick={() => {
-            // Re-reading goes back through the machine so the microphone is
-            // closed first: an open mic would transcribe the app's own voice.
-            send({ type: "ASK" });
-            speak(question, () => send({ type: "SPOKEN" }));
-          }}
-        >
-          Read again
-        </Button>
-        <Button variant="ghost" onClick={onUseTyping}>
-          Type instead
-        </Button>
-      </div>
-
-      {recognition.error && recognition.error !== "no-speech" && (
-        <p className="mt-4 text-sm text-destructive">
-          {describeSpeechError(recognition.error)}
-        </p>
-      )}
-      {submit.isError && (
-        <p className="mt-4 text-sm text-destructive">
-          Could not save that answer: {submit.error.message}
-        </p>
-      )}
-      <LastQuestionNotice session={session} />
-    </section>
+        {fault && (
+          <p className="max-w-sm text-center text-sm text-destructive">
+            {describeSpeechError(fault)}
+          </p>
+        )}
+        {submit.isError && (
+          <p className="max-w-sm text-center text-sm text-destructive">
+            Could not save that answer: {submit.error.message}
+          </p>
+        )}
+      </Stage>
+    </Room>
   );
 }
 
@@ -292,51 +456,56 @@ function TypedTurn({
   const [answer, setAnswer] = useState("");
   const submit = useSubmitAnswer(session.id);
 
-  return (
-    <section>
-      <Progress session={session} />
+  const handleSubmit = () => {
+    if (answer.trim() === "" || submit.isPending) return;
+    submit.mutate(answer, { onSuccess: () => setAnswer("") });
+  };
 
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (answer.trim() === "") return;
-          submit.mutate(answer, { onSuccess: () => setAnswer("") });
-        }}
+  return (
+    <Room
+      session={session}
+      status={submit.isPending ? "Saving…" : "Type your answer"}
+      busy={submit.isPending}
+      controls={
+        <>
+          <ControlButton
+            icon={<Send className="size-5" />}
+            label={submit.isPending ? "Saving…" : submitLabel(session)}
+            onClick={handleSubmit}
+            disabled={answer.trim() === "" || submit.isPending}
+            active={answer.trim() !== ""}
+          />
+          {onUseVoice && (
+            <ControlButton
+              icon={<Mic className="size-5" />}
+              label="Voice"
+              onClick={onUseVoice}
+            />
+          )}
+        </>
+      }
+    >
+      {/* The avatar stays put so switching input modes does not change rooms,
+          and still reports saving. */}
+      <Stage
+        session={session}
+        orbState={submit.isPending ? "thinking" : "idle"}
       >
         <Textarea
           value={answer}
           onChange={(event) => setAnswer(event.target.value)}
           placeholder="Type your answer…"
           aria-label="Your answer"
-          rows={8}
-          className="mb-4"
+          rows={6}
+          className="max-w-lg"
         />
-        <div className="flex items-center gap-3">
-          <Button
-            type="submit"
-            disabled={answer.trim() === "" || submit.isPending}
-          >
-            {submit.isPending
-              ? "Saving…"
-              : session.currentPosition === session.questionCount
-                ? "Submit final answer"
-                : "Submit answer"}
-          </Button>
-          {onUseVoice && (
-            <Button type="button" variant="ghost" onClick={onUseVoice}>
-              Answer by voice
-            </Button>
-          )}
-        </div>
-      </form>
-
-      {submit.isError && (
-        <p className="mt-4 text-sm text-destructive">
-          Could not save that answer: {submit.error.message}
-        </p>
-      )}
-      <LastQuestionNotice session={session} />
-    </section>
+        {submit.isError && (
+          <p className="max-w-sm text-center text-sm text-destructive">
+            Could not save that answer: {submit.error.message}
+          </p>
+        )}
+      </Stage>
+    </Room>
   );
 }
 

@@ -32,9 +32,9 @@ test("a single question is enough to start a shorter session", async ({
   await start.click();
   await expect(page.getByText("Question 1 of 1")).toBeVisible();
 
-  await page.getByRole("button", { name: "Type instead" }).click();
+  await page.getByRole("button", { name: "Type" }).click();
   await page.getByLabel("Your answer").fill("My only answer.");
-  await page.getByRole("button", { name: "Submit final answer" }).click();
+  await page.getByRole("button", { name: "Submit final" }).click();
 
   await expect(page.getByRole("heading", { name: "Transcript" })).toBeVisible();
   await expect(page.getByText("1 of 1 answered")).toBeVisible();
