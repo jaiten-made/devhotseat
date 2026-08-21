@@ -1,6 +1,32 @@
 import { useCallback, useEffect, useRef } from "react";
 
 /**
+ * Voice families in descending order of how natural they sound, matched
+ * loosely against the voice name.
+ *
+ * Setting only `lang` leaves the choice to the browser, which on Linux picks
+ * the first espeak voice and ignores anything better that is installed
+ * alongside it. mbrola voices are diphone-based and markedly less robotic.
+ */
+const PREFERRED_VOICES = ["mbrola", "us1", "us2", "en1"];
+
+function preferredVoice(
+  voices: ReadonlyArray<SpeechSynthesisVoice>,
+): SpeechSynthesisVoice | null {
+  const english = voices.filter((voice) => voice.lang.startsWith("en"));
+  if (english.length === 0) return null;
+
+  for (const wanted of PREFERRED_VOICES) {
+    const match = english.find((voice) =>
+      voice.name.toLowerCase().includes(wanted),
+    );
+    if (match) return match;
+  }
+  // No preference available; let the browser keep its own default.
+  return null;
+}
+
+/**
  * Reads text aloud with the browser's built-in voice.
  *
  * `onDone` fires on the real `end` event, never a timer, and also fires if
@@ -44,6 +70,8 @@ export function useSpeechSynthesis() {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "en-US";
       utterance.rate = 1;
+      const preferred = preferredVoice(window.speechSynthesis.getVoices());
+      if (preferred) utterance.voice = preferred;
       utteranceRef.current = utterance;
 
       utterance.onend = finish;

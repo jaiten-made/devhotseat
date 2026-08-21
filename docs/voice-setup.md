@@ -39,11 +39,21 @@ And to confirm English voices are installed at all:
 espeak-ng --voices=en
 ```
 
-## Voice quality
+## Better voices
 
-These are espeak-ng voices: clear, but obviously synthetic. Installing an
-`mbrola` voice package gives more natural output through the same API and needs
-no change to the app.
+espeak-ng on its own is clear but obviously synthetic. mbrola voices are
+diphone-based and markedly less robotic:
+
+```bash
+sudo apt install mbrola mbrola-us1 mbrola-us2 mbrola-us3 mbrola-en1
+```
+
+That is the engine plus American female, American male and British male
+voices. Restart Chrome again afterwards, for the same reason as before.
+
+The app picks the best installed English voice by name rather than accepting
+the browser's default, which on Linux is the first espeak voice regardless of
+what else is present.
 
 ## Browser support
 
