@@ -30,6 +30,5 @@ are both server-owned, so they belong with the server.
 
 - The web app cannot read server constants at compile time, so rendering "you
   need N more questions" costs an extra request.
-- If a second server-side consumer appears (a CLI, a background worker), the
-  machine and constants would have to be lifted into a new `@hotseat/core`
-  package and every import updated.
+- A second server-side consumer (a CLI, a worker) would mean lifting the
+  machine and constants into a `@hotseat/core` package and updating imports.

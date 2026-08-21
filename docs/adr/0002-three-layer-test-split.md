@@ -20,9 +20,8 @@ A package defines a script only when it has tests of that kind.
 ## Why
 
 Each layer answers a question the others cannot. Unit tests pin down logic
-that is expensive to reach through HTTP. Integration tests prove route wiring
-and status codes, which mocking a service layer hides. Playwright proves the
-UI is connected, and nothing more.
+expensive to reach through HTTP. Integration tests prove wiring that mocking a
+service layer hides. Playwright proves the UI is connected, nothing more.
 
 ## Pros
 
@@ -31,6 +30,5 @@ UI is connected, and nothing more.
 
 ## Cons
 
-- `--if-present` means a typo in a script name silently skips a package rather
-  than erroring.
+- `--if-present` means a typo in a script name silently skips a package.
 - Three configs to keep aligned.

@@ -28,7 +28,7 @@ questions are already drawn without replacement.
 
 ## Cons
 
-- Session length is now a property of when the session started, not a constant,
-  so any future comparison across sessions has to account for it.
-- `SESSION_LENGTH` no longer describes what a session *is*, only its maximum,
-  which is a slightly weaker guarantee to reason about.
+- Session length depends on when the session started, so comparing across
+  sessions has to account for it.
+- `SESSION_LENGTH` describes only a maximum, a weaker guarantee to reason
+  about.
