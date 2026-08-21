@@ -25,14 +25,14 @@ test("deleting a session asks first, and cancelling keeps it", async ({
     page.getByRole("heading", { name: "Delete this session?" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
-  await expect(page.getByText("2 of 2 answered")).toBeVisible();
+  await expect(trash).toBeVisible();
 
   // Confirming deletes the session, and with it the transcript it owned.
   await trash.click();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
 
   await expect(page.getByText("No sessions yet")).toBeVisible();
-  await expect(page.getByText("2 of 2 answered")).toHaveCount(0);
+  await expect(trash).toHaveCount(0);
 
   // The question bank is a separate thing and must survive.
   await page.getByRole("link", { name: "Questions" }).click();

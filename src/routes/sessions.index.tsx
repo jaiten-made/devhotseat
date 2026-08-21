@@ -86,9 +86,6 @@ function SessionList() {
               <span className="flex-1">
                 {new Date(session.startedAt).toLocaleString()}
               </span>
-              <span className="text-sm text-muted-foreground">
-                {session.answeredCount} of {session.questionCount} answered
-              </span>
               <ReportState hasReport={session.hasReport} />
             </Link>
             <DeleteSession

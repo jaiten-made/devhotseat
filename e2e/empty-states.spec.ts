@@ -37,7 +37,7 @@ test("a single question is enough to start a shorter session", async ({
   await page.getByRole("button", { name: "Submit final" }).click();
 
   await expect(page.getByRole("heading", { name: "Transcript" })).toBeVisible();
-  await expect(page.getByText("1 of 1 answered")).toBeVisible();
+  await expect(page.getByText("My only answer.")).toBeVisible();
 });
 
 test("no sessions yet reads as an empty list, not an error", async ({

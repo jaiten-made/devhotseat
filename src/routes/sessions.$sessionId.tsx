@@ -762,8 +762,7 @@ function Transcript({ session }: { session: SessionDetail }) {
     <section>
       <h1 className="mb-1 text-2xl font-semibold tracking-tight">Transcript</h1>
       <p className="mb-8 text-sm text-muted-foreground">
-        {new Date(session.startedAt).toLocaleString()} · {session.answeredCount}{" "}
-        of {session.questionCount} answered
+        {new Date(session.startedAt).toLocaleString()}
       </p>
 
       <ol className="mb-10 space-y-6">

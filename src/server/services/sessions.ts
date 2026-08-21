@@ -307,7 +307,6 @@ export async function listSessions(db: Database) {
   const rows = await db
     .select({
       id: sessions.id,
-      questionCount: sessions.questionCount,
       startedAt: sessions.startedAt,
       endedAt: sessions.endedAt,
       answeredCount: count(turns.answeredAt),

@@ -69,7 +69,6 @@ test("add questions, run a session, read the transcript and report", async ({
 
   // The session auto-ends on the last answer and swaps to the transcript.
   await expect(page.getByRole("heading", { name: "Transcript" })).toBeVisible();
-  await expect(page.getByText("5 of 5 answered")).toBeVisible();
 
   for (let turn = 1; turn <= 5; turn++) {
     await expect(
@@ -83,6 +82,5 @@ test("add questions, run a session, read the transcript and report", async ({
   ).toBeVisible();
 
   await page.getByRole("link", { name: "Sessions" }).click();
-  await expect(page.getByText("5 of 5 answered")).toBeVisible();
   await expect(page.getByText("Report ready")).toBeVisible();
 });

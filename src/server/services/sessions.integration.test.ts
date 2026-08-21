@@ -337,7 +337,6 @@ describe("the transcript and report", () => {
     expect(listed).toHaveLength(1);
     expect(listed[0]).toMatchObject({
       id,
-      questionCount: N,
       answeredCount: N,
       hasReport: true,
     });
