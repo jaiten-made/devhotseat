@@ -209,6 +209,8 @@ Three layers, no overlap. Don't write a test that belongs in a lower layer.
   transcript, see the report.
 * One spec for empty and failure states: empty question bank, no sessions yet,
   and a session whose report is missing.
+* One spec for deleting a question, since it is destructive and two-step:
+  cancelling keeps the question, confirming removes it.
 * Runs the real stack against the test database with report generation stubbed.
   See ADR 0011.
 
