@@ -22,11 +22,16 @@ test("add questions, run a session, read the transcript and report", async ({
   }
 
   await page.getByRole("button", { name: "Start a session" }).click();
-  await expect(page.getByText("Question 1 of 5")).toBeVisible();
 
-  // Arriving reads nothing out: the room waits to be started. Asserted here
-  // because it is the one thing the spoken loop does before any microphone is
-  // involved, so it is reachable from a browser with no audio at all.
+  // Arriving reads nothing out: the room opens on the briefing and waits to be
+  // started. Asserted here because it is the one thing the spoken loop does
+  // before any microphone is involved, so it is reachable from a browser with
+  // no audio at all. The question itself is not on screen yet.
+  await expect(
+    page.getByRole("heading", { name: "Ready when you are" }),
+  ).toBeVisible();
+  await expect(page.getByText("5 questions")).toBeVisible();
+  await expect(page.getByText(QUESTIONS[0])).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: /^Start the interview/ }),
   ).toBeVisible();

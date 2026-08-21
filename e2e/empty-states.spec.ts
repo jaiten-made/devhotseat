@@ -30,7 +30,7 @@ test("a single question is enough to start a shorter session", async ({
   await expect(start).toBeEnabled();
 
   await start.click();
-  await expect(page.getByText("Question 1 of 1")).toBeVisible();
+  await expect(page.getByText("1 question", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Type" }).click();
   await page.getByLabel("Your answer").fill("My only answer.");

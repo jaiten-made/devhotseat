@@ -21,6 +21,7 @@ import {
 } from "react";
 import {
   ErrorOverlay,
+  Lobby,
   Orb,
   TranscriptPanel,
   TurnBar,
@@ -127,12 +128,18 @@ function isLastQuestion(session: SessionDetail): boolean {
 function Room({
   session,
   turn,
+  subtitle,
   secondaries,
   children,
 }: {
   session: SessionDetail;
   /** Whose turn it is, and the move if it is yours. */
   turn: TurnBarProps;
+  /**
+   * Replaces the progress line. The lobby uses it: counting the question you
+   * are on reads as a claim that the interview is under way.
+   */
+  subtitle?: string;
   /** The incidentals this input mode adds beside the transcript toggle. */
   secondaries: ReactNode;
   children: ReactNode;
@@ -160,7 +167,8 @@ function Room({
               Interview session
             </p>
             <p className="truncate text-sm text-muted-foreground">
-              Question {session.currentPosition} of {session.questionCount}
+              {subtitle ??
+                `Question ${session.currentPosition} of ${session.questionCount}`}
             </p>
           </div>
           <Button
@@ -454,6 +462,28 @@ function VoiceTurn({
     </Button>
   );
 
+  // Before the first press there is no question on the stage to read off, so
+  // the room shows the briefing instead. See `Lobby`.
+  if (waiting) {
+    return (
+      <Room
+        session={session}
+        turn={voiceTurnBar(
+          session,
+          voice,
+          false,
+          start,
+          startTalking,
+          handleSubmit,
+        )}
+        subtitle="Not started"
+        secondaries={typeAction}
+      >
+        <Lobby questionCount={session.questionCount} />
+      </Room>
+    );
+  }
+
   // A blocked microphone ends the spoken loop for this turn: the stage keeps
   // the question on screen and the only way forward is typing.
   if (voice.status === "blocked") {
@@ -499,7 +529,7 @@ function VoiceTurn({
             variant="ghost"
             size="sm"
             onClick={readAgain}
-            disabled={submit.isPending || waiting}
+            disabled={submit.isPending}
             className="text-muted-foreground"
           >
             <Volume2 className="size-4" />
