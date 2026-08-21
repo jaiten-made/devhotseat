@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef } from "react";
 
 /**
- * Voice families in descending order of how natural they sound, matched
- * loosely against the voice name.
+ * Voice names preferred in descending order, matched loosely.
  *
- * Setting only `lang` leaves the choice to the browser, which on Linux picks
- * the first espeak voice and ignores anything better that is installed
- * alongside it. mbrola voices are diphone-based and markedly less robotic.
+ * Chrome ships its own voices and, at least on Linux, does not surface the
+ * system ones from speech-dispatcher at all — so espeak and mbrola never
+ * appear in the list even when installed. Chrome's own voices are better than
+ * either, so they are what this prefers.
  */
-const PREFERRED_VOICES = ["mbrola", "us1", "us2", "en1"];
+const PREFERRED_VOICES = ["google us english", "google uk english", "google"];
 
 function preferredVoice(
   voices: ReadonlyArray<SpeechSynthesisVoice>,
@@ -22,7 +22,7 @@ function preferredVoice(
     );
     if (match) return match;
   }
-  // No preference available; let the browser keep its own default.
+  // Nothing preferred is present; let the browser keep its own default.
   return null;
 }
 

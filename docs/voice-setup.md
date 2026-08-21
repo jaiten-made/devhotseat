@@ -1,59 +1,43 @@
-# Voice setup on Ubuntu
+# Voice setup
 
-The app uses the browser's own speech APIs, so there is nothing to install for
-the project itself. Chrome on Linux, though, gets its voices from the system
-rather than shipping its own, and a stock Ubuntu install has none. Without them
-questions are never read aloud.
+The app uses the browser's own speech APIs, so there is normally nothing to
+install. Chrome ships its own voices — on this machine it exposes *Google US
+English*, *Google UK English Female* and *Google UK English Male* — and the app
+prefers those over anything else it finds.
 
-## Install the voices
+## If nothing is read aloud
+
+**Restart Chrome completely.** It builds its voice list at startup and the list
+is empty until then; reloading the page is not enough.
+
+Then check in the Chrome console (`F12` → Console; the first paste needs you to
+type `allow pasting` once):
+
+```bash
+speechSynthesis.getVoices().filter(v => v.lang.startsWith('en')).map(v => v.name)
+```
+
+An array of names means Chrome can speak. An empty array after a full restart
+means it genuinely has none, which is when the section below applies.
+
+## System voices, if Chrome has none
 
 ```bash
 sudo apt install speech-dispatcher espeak-ng
 ```
 
-## Restart Chrome completely
+Then restart Chrome again and re-run the check.
 
-Chrome enumerates system voices **once, at startup**. Reloading the page is not
-enough — quit every Chrome window and open it again.
+Be aware this may change nothing: Chrome on Linux does not necessarily surface
+speech-dispatcher voices, and on this machine it does not — espeak-ng and
+mbrola are both installed and neither appears in the list above. Install these
+only if the check keeps coming back empty.
 
-## Check it worked
-
-In the Chrome console:
-
-```bash
-speechSynthesis.getVoices().length
-```
-
-Anything above zero means Chrome can see them. If it is still zero, Chrome was
-not fully restarted.
-
-To test the audio path on its own, independently of Chrome:
+To confirm the system audio path independently of Chrome:
 
 ```bash
 spd-say "testing one two three"
 ```
-
-And to confirm English voices are installed at all:
-
-```bash
-espeak-ng --voices=en
-```
-
-## Better voices
-
-espeak-ng on its own is clear but obviously synthetic. mbrola voices are
-diphone-based and markedly less robotic:
-
-```bash
-sudo apt install mbrola mbrola-us1 mbrola-us2 mbrola-us3 mbrola-en1
-```
-
-That is the engine plus American female, American male and British male
-voices. Restart Chrome again afterwards, for the same reason as before.
-
-The app picks the best installed English voice by name rather than accepting
-the browser's default, which on Linux is the first espeak voice regardless of
-what else is present.
 
 ## Browser support
 
