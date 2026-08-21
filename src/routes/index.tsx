@@ -111,6 +111,7 @@ function QuestionBank() {
               <Button
                 variant="ghost"
                 size="icon"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                 aria-label={`Delete question: ${question.text}`}
                 disabled={remove.isPending}
                 onClick={() => remove.mutate(question.id)}

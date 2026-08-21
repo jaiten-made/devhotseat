@@ -52,17 +52,36 @@ function SessionList() {
               <span className="text-sm text-muted-foreground">
                 {session.answeredCount} of {session.questionCount} answered
               </span>
-              <span className="text-sm text-muted-foreground">
-                {session.status === "in_progress"
-                  ? "In progress"
-                  : session.hasReport
-                    ? "Report ready"
-                    : "No report"}
-              </span>
+              <SessionStatus
+                status={session.status}
+                hasReport={session.hasReport}
+              />
             </Link>
           </li>
         ))}
       </ul>
     </section>
+  );
+}
+
+/**
+ * Colour carries the meaning here: green for a finished session with its
+ * report, amber for one still running, and muted grey for a finished session
+ * whose report never arrived — an absence rather than a failure.
+ */
+function SessionStatus({
+  status,
+  hasReport,
+}: {
+  status: "in_progress" | "completed";
+  hasReport: boolean;
+}) {
+  if (status === "in_progress") {
+    return <span className="text-sm text-warning">In progress</span>;
+  }
+  return hasReport ? (
+    <span className="text-sm text-success">Report ready</span>
+  ) : (
+    <span className="text-sm text-muted-foreground">No report</span>
   );
 }

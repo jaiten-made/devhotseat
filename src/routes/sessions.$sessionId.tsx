@@ -110,7 +110,7 @@ function TurnLoop({ session }: { session: SessionDetail }) {
         </p>
       )}
       {session.currentPosition === session.questionCount && (
-        <p className="mt-4 text-sm text-muted-foreground">
+        <p className="mt-4 text-sm text-warning">
           This is the last question. Submitting it ends the session and writes
           your feedback report.
         </p>
@@ -148,7 +148,9 @@ function Transcript({ session }: { session: SessionDetail }) {
           {session.report.content}
         </article>
       ) : (
-        <p className="rounded-lg border border-dashed p-6 text-muted-foreground">
+        // A missing report is a degraded state, not an error: the amber tint
+        // says something is absent without claiming anything went wrong.
+        <p className="rounded-lg border border-dashed border-warning/50 bg-warning/5 p-6">
           No report was written for this session. The transcript above is still
           complete.
         </p>

@@ -59,8 +59,12 @@ test("a session whose report is missing still shows its transcript", async ({
   await expect(page.getByText("Seeded question one?")).toBeVisible();
   await expect(page.getByText("Seeded answer two.")).toBeVisible();
 
-  // A missing report is a valid state, not a failure.
-  await expect(
-    page.getByText("No report was written for this session"),
-  ).toBeVisible();
+  // A missing report is a valid state, not a failure. The amber tint carries
+  // that meaning, so it is asserted rather than left to the eye.
+  const notice = page.getByText("No report was written for this session");
+  await expect(notice).toBeVisible();
+  await expect(notice).toHaveCSS(
+    "border-top-color",
+    "oklab(0.52 0.0410424 0.112763 / 0.5)",
+  );
 });
