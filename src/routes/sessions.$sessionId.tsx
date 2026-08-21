@@ -349,10 +349,24 @@ function VoiceTurn({
   useEffect(() => {
     if (position === null || spokenForRef.current === position) return;
     spokenForRef.current = position;
+    // Shut the microphone here rather than leaving it to the effect below.
+    // `send` only queues the state change, so `listening` does not go false
+    // until the next render — but `speak` starts talking on this line. The
+    // effect would close the mic a render too late, with the voice already
+    // going into it.
+    recognition.stop();
     recognition.reset();
     send({ type: "ASK" });
     speak(question, () => send({ type: "SPOKEN" }), onWord);
-  }, [position, question, speak, send, onWord, recognition.reset]);
+  }, [
+    position,
+    question,
+    speak,
+    send,
+    onWord,
+    recognition.reset,
+    recognition.stop,
+  ]);
 
   // The microphone is open in exactly one state, so mirror that here.
   const listening = shouldListen(voice);
@@ -390,8 +404,12 @@ function VoiceTurn({
   };
 
   const readAgain = () => {
-    // Re-reading goes back through the machine so the microphone is closed
-    // first: an open mic would transcribe the app's own voice.
+    // Closed before speaking, not by the machine afterwards: this is pressed
+    // while listening, so the mic is live and `speak` starts on the line below,
+    // a render before the state change would have shut it. What has been
+    // heard so far is kept — re-reading the question is not giving up on the
+    // answer already given.
+    recognition.stop();
     send({ type: "ASK" });
     speak(question, () => send({ type: "SPOKEN" }), onWord);
   };

@@ -26,6 +26,9 @@ function preferredVoice(
   return null;
 }
 
+/** How long synthesis has to engage before the turn gives up on it. */
+const WATCHDOG_MS = 600;
+
 /**
  * Reads text aloud with the browser's built-in voice.
  *
@@ -45,16 +48,26 @@ export function useSpeechSynthesis() {
 
   const cancel = useCallback(() => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    const utterance = utteranceRef.current;
-    if (utterance) {
-      utterance.onend = null;
-      utterance.onerror = null;
-      utterance.onboundary = null;
+    const outstanding = utteranceRef.current;
+    if (outstanding) {
+      outstanding.onstart = null;
+      outstanding.onend = null;
+      outstanding.onerror = null;
+      outstanding.onboundary = null;
       utteranceRef.current = null;
     }
     // Chrome drops the next utterance if cancel() is called when the queue is
-    // already empty, so only cancel when there is something to stop.
-    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+    // already empty, so only cancel when there is something to stop. Whether
+    // we queued anything ourselves is the more reliable test of that: a
+    // network voice that has stalled reports neither `speaking` nor `pending`,
+    // and trusting those would leave a live utterance to pick up again after
+    // the turn had handed over — the voice reading the back half of the
+    // question into an open microphone.
+    if (
+      outstanding ||
+      window.speechSynthesis.speaking ||
+      window.speechSynthesis.pending
+    ) {
       window.speechSynthesis.cancel();
     }
   }, []);
@@ -68,11 +81,20 @@ export function useSpeechSynthesis() {
       cancel();
 
       let settled = false;
+      let started = false;
+      let watchdog = 0;
       const finish = () => {
         if (settled) return;
         settled = true;
+        window.clearTimeout(watchdog);
         utteranceRef.current = null;
         onDone();
+      };
+      // Stop the voice before handing the turn over rather than letting it
+      // play on: whatever is left would be read out over an open microphone.
+      const abandon = () => {
+        cancel();
+        finish();
       };
 
       const utterance = new SpeechSynthesisUtterance(text);
@@ -82,8 +104,11 @@ export function useSpeechSynthesis() {
       if (preferred) utterance.voice = preferred;
       utteranceRef.current = utterance;
 
+      utterance.onstart = () => {
+        started = true;
+      };
       utterance.onend = finish;
-      utterance.onerror = finish;
+      utterance.onerror = abandon;
       if (onWord) {
         utterance.onboundary = (event) => {
           // Engines that distinguish the two also report sentence boundaries,
@@ -103,16 +128,20 @@ export function useSpeechSynthesis() {
       // nothing, firing neither end nor error, which would strand the turn.
       // It deliberately does not pre-check getVoices(): that returns an empty
       // array until voices load asynchronously, so checking it up front skips
-      // speech entirely on the first question. Queued speech sets `pending`
-      // straight away, so a real utterance never trips this.
-      window.setTimeout(() => {
-        if (
-          !window.speechSynthesis.speaking &&
-          !window.speechSynthesis.pending
-        ) {
-          finish();
+      // speech entirely on the first question.
+      //
+      // A real `start` event disarms it, which a slow voice reaching the
+      // speakers late still produces; queued speech also sets `pending`
+      // straight away. If it does fire it cancels, because a voice that
+      // engages after the turn has handed over would be speaking into an open
+      // microphone.
+      watchdog = window.setTimeout(() => {
+        if (started) return;
+        if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+          return;
         }
-      }, 600);
+        abandon();
+      }, WATCHDOG_MS);
     },
     [cancel],
   );

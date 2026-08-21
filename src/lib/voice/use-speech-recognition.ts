@@ -111,6 +111,18 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
       };
 
       recognition.onend = () => {
+        // Only the instance still being tracked may restart itself.
+        //
+        // `stoppedDeliberatelyRef` alone is not enough: it is one flag for the
+        // whole hook, and `end` can arrive long after the instance it belongs
+        // to was stopped — the recognition service is hosted, so the round
+        // trip is a network one. If the flag has since been cleared by a new
+        // turn calling `start`, a late `end` would build a second recogniser
+        // and overwrite the ref with it. Nothing then holds a handle to the
+        // first, so `stop` can never reach it and it keeps the microphone open
+        // straight through the next question being read aloud.
+        if (recognitionRef.current !== recognition) return;
+
         // The engine ends itself after a pause; keep going unless we meant it.
         if (stoppedDeliberatelyRef.current) {
           setIsListening(false);
@@ -121,6 +133,10 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
         try {
           next.start();
         } catch {
+          // The ref is cleared so a later `start` can build a fresh one. Left
+          // set, it would look like a live recogniser and every later `start`
+          // would return early against a microphone that is actually shut.
+          recognitionRef.current = null;
           setIsListening(false);
         }
       };
