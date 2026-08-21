@@ -9,6 +9,7 @@ import { sessionQuery } from "@/lib/queries";
 import { queryKeys } from "@/lib/query-keys";
 import {
   canSubmit,
+  describeSpeechError,
   shouldListen,
   type VoiceEvent,
   type VoiceState,
@@ -157,11 +158,15 @@ function VoiceTurn({
     else recognition.stop();
   }, [listening, recognition.start, recognition.stop]);
 
-  // A refused microphone is not recoverable in place: offer typing instead.
+  // These are not recoverable in place, so offer typing instead. `network`
+  // is included because recognition is a hosted service that some browsers
+  // ship without access to; retrying will not help.
   useEffect(() => {
     if (
       recognition.error === "not-allowed" ||
-      recognition.error === "audio-capture"
+      recognition.error === "service-not-allowed" ||
+      recognition.error === "audio-capture" ||
+      recognition.error === "network"
     ) {
       send({ type: "MIC_BLOCKED", reason: recognition.error });
     }
@@ -185,8 +190,7 @@ function VoiceTurn({
       <section>
         <Progress session={session} />
         <p className="mb-4 rounded-lg border border-dashed border-warning/50 bg-warning/5 p-4 text-sm">
-          The microphone is unavailable ({voice.reason}). Allow access and
-          reload, or answer by typing.
+          {describeSpeechError(voice.reason)}
         </p>
         <Button onClick={onUseTyping}>Type my answer instead</Button>
       </section>
@@ -263,7 +267,7 @@ function VoiceTurn({
 
       {recognition.error && recognition.error !== "no-speech" && (
         <p className="mt-4 text-sm text-destructive">
-          Microphone error: {recognition.error}
+          {describeSpeechError(recognition.error)}
         </p>
       )}
       {submit.isError && (

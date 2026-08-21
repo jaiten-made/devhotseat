@@ -12,6 +12,7 @@ no auth, no multi-tenancy and no hosted deployment: it runs locally.
 | Node | 24.19.0 (see `.nvmrc`) |
 | pnpm | 11.22.0 (pinned via `packageManager`, provided by Corepack) |
 | PostgreSQL | 18.6, listening on 5432 |
+| Browser | Google Chrome. Speech recognition is a hosted service that Brave and some other Chromium builds ship without. |
 
 ```bash
 nvm install && nvm use && corepack enable
@@ -57,8 +58,6 @@ report from **Sessions**. A session asks every question in the bank, in random
 order, reading each one aloud and transcribing your spoken answer. Typing is
 available at any time via **Type instead**, and is used automatically when the
 browser has no speech support or the microphone is refused.
-
-If nothing is read aloud, see [Voice setup](docs/voice-setup.md).
 
 ## Testing
 

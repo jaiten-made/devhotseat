@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canSubmit,
+  describeSpeechError,
   shouldListen,
   type VoiceEvent,
   type VoiceState,
@@ -123,5 +124,28 @@ describe("guards", () => {
       false,
     ]);
     expect(canSubmit(listening)).toBe(true);
+  });
+});
+
+describe("describeSpeechError", () => {
+  it("names the browser as the cause for a network failure", () => {
+    const message = describeSpeechError("network");
+    expect(message).toMatch(/recognition/i);
+    // The code alone reads as a connectivity problem, which it usually is not.
+    expect(message).toMatch(/Chrome/);
+  });
+
+  it("tells the user what to do about a refused microphone", () => {
+    for (const code of ["not-allowed", "service-not-allowed"]) {
+      expect(describeSpeechError(code)).toMatch(/allow it for this site/i);
+    }
+  });
+
+  it("reports a missing microphone plainly", () => {
+    expect(describeSpeechError("audio-capture")).toMatch(/no microphone/i);
+  });
+
+  it("falls back to quoting an unknown code rather than swallowing it", () => {
+    expect(describeSpeechError("something-new")).toContain("something-new");
   });
 });

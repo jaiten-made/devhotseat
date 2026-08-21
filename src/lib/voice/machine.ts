@@ -81,3 +81,26 @@ export function shouldListen(state: VoiceState): boolean {
 export function canSubmit(state: VoiceState): boolean {
   return state.status === "listening";
 }
+
+/**
+ * Turns a Web Speech error code into something that says what to do about it.
+ *
+ * `network` is the one worth naming explicitly: recognition is a hosted
+ * service, and privacy-focused Chromium forks ship without the key for it, so
+ * the code appears even when the machine is plainly online.
+ */
+export function describeSpeechError(code: string): string {
+  switch (code) {
+    case "not-allowed":
+    case "service-not-allowed":
+      return "Microphone access was refused. Allow it for this site and reload.";
+    case "audio-capture":
+      return "No microphone was found.";
+    case "network":
+      return "Speech recognition could not reach its service. It is hosted by the browser vendor, and Brave and some other Chromium builds disable it — Google Chrome is the reliable option.";
+    case "aborted":
+      return "Listening stopped before anything was captured.";
+    default:
+      return `Speech recognition failed (${code}).`;
+  }
+}
