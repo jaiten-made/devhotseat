@@ -1,11 +1,23 @@
 @import "tailwindcss";
 
 /*
+ * shadcn components carry `dark:` utilities. Tailwind's default dark variant is
+ * prefers-color-scheme, so on a machine set to dark they applied on top of this
+ * light-only theme — a destructive button rendered at 60% opacity, inputs at
+ * 30%. Binding the variant to a `.dark` class instead means they never match
+ * until a dark theme actually exists.
+ */
+@custom-variant dark (&:is(.dark *));
+
+/*
  * shadcn/ui's design tokens, neutral base. The components reference these by
  * name (bg-primary, text-muted-foreground, border-input and so on), so they
  * have to exist before any of them render correctly.
  */
 :root {
+  /* Light-only app: keep form controls and scrollbars light regardless of the
+     operating system preference. */
+  color-scheme: light;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.23 0 0);
