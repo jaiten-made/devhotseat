@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import {
   type ReactNode,
+  type Ref,
   useCallback,
   useEffect,
   useRef,
@@ -39,6 +40,7 @@ import {
   type VoiceState,
   voiceTransition,
 } from "@/lib/voice/machine";
+import { useMicLevel } from "@/lib/voice/use-mic-level";
 import { useSpeechRecognition } from "@/lib/voice/use-speech-recognition";
 import { useSpeechSupport } from "@/lib/voice/use-speech-support";
 import { useSpeechSynthesis } from "@/lib/voice/use-speech-synthesis";
@@ -209,15 +211,20 @@ function Room({
 function Stage({
   session,
   orbState,
+  orbPulse,
+  orbRef,
   children,
 }: {
   session: SessionDetail;
   orbState: OrbState;
+  /** Ticks once per spoken word; see `Orb`. */
+  orbPulse?: number;
+  orbRef?: Ref<HTMLDivElement>;
   children?: ReactNode;
 }) {
   return (
     <>
-      <Orb state={orbState} />
+      <Orb state={orbState} pulse={orbPulse} ref={orbRef} />
       <h1 className="max-w-xl text-balance text-center text-xl font-semibold tracking-tight">
         {currentQuestion(session)}
       </h1>
@@ -262,6 +269,11 @@ function VoiceTurn({
     [],
   );
 
+  // One tick per word the engine speaks. A few re-renders a second, which is
+  // the cost of the avatar throbbing in time with the voice.
+  const [wordPulse, setWordPulse] = useState(0);
+  const onWord = useCallback(() => setWordPulse((count) => count + 1), []);
+
   const { speak, cancel } = useSpeechSynthesis();
   const recognition = useSpeechRecognition();
   const submit = useSubmitAnswer(session.id);
@@ -277,11 +289,12 @@ function VoiceTurn({
     spokenForRef.current = position;
     recognition.reset();
     send({ type: "ASK" });
-    speak(question, () => send({ type: "SPOKEN" }));
-  }, [position, question, speak, send, recognition.reset]);
+    speak(question, () => send({ type: "SPOKEN" }), onWord);
+  }, [position, question, speak, send, onWord, recognition.reset]);
 
   // The microphone is open in exactly one state, so mirror that here.
   const listening = shouldListen(voice);
+  const orbRef = useMicLevel(listening);
   useEffect(() => {
     if (listening) recognition.start();
     else recognition.stop();
@@ -318,7 +331,7 @@ function VoiceTurn({
     // Re-reading goes back through the machine so the microphone is closed
     // first: an open mic would transcribe the app's own voice.
     send({ type: "ASK" });
-    speak(question, () => send({ type: "SPOKEN" }));
+    speak(question, () => send({ type: "SPOKEN" }), onWord);
   };
 
   // `no-speech` is retried silently by the hook, so it is not shown as a fault.
@@ -405,7 +418,12 @@ function VoiceTurn({
         </>
       }
     >
-      <Stage session={session} orbState={orbStateFor(voice, fault !== null)}>
+      <Stage
+        session={session}
+        orbState={orbStateFor(voice, fault !== null)}
+        orbPulse={wordPulse}
+        orbRef={orbRef}
+      >
         {/* Live captions: committed words plain, words still in flight italic. */}
         {canSubmit(voice) && (
           <p className="max-w-lg text-center text-sm">

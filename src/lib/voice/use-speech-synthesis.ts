@@ -32,6 +32,13 @@ function preferredVoice(
  * `onDone` fires on the real `end` event, never a timer, and also fires if
  * synthesis errors: a question that cannot be spoken must still let the turn
  * continue rather than stranding the session.
+ *
+ * `onWord` fires as the engine passes each word, which is the only progress
+ * signal synthesis gives out. There is no audio stream behind
+ * `speechSynthesis` — it renders straight to the output device and exposes no
+ * node to attach an analyser to — so word boundaries are as close to the
+ * spoken audio as anything can get without paying for hosted speech. Not
+ * every voice reports them, so callers must still work when it never fires.
  */
 export function useSpeechSynthesis() {
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -42,6 +49,7 @@ export function useSpeechSynthesis() {
     if (utterance) {
       utterance.onend = null;
       utterance.onerror = null;
+      utterance.onboundary = null;
       utteranceRef.current = null;
     }
     // Chrome drops the next utterance if cancel() is called when the queue is
@@ -52,7 +60,7 @@ export function useSpeechSynthesis() {
   }, []);
 
   const speak = useCallback(
-    (text: string, onDone: () => void) => {
+    (text: string, onDone: () => void, onWord?: () => void) => {
       if (typeof window === "undefined" || !("speechSynthesis" in window)) {
         onDone();
         return;
@@ -76,6 +84,14 @@ export function useSpeechSynthesis() {
 
       utterance.onend = finish;
       utterance.onerror = finish;
+      if (onWord) {
+        utterance.onboundary = (event) => {
+          // Engines that distinguish the two also report sentence boundaries,
+          // which would throb once per question rather than once per word.
+          if (event.name && event.name !== "word") return;
+          onWord();
+        };
+      }
 
       window.speechSynthesis.speak(utterance);
 
