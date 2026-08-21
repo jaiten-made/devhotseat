@@ -1,22 +1,11 @@
 import {
   integer,
-  pgEnum,
   pgTable,
   text,
   timestamp,
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
-
-/**
- * A session is only ever running or finished. "Finished but the report failed"
- * is not a status: the absence of a `reports` row already says that, and the
- * UI has to handle a missing report regardless.
- */
-export const sessionStatus = pgEnum("session_status", [
-  "in_progress",
-  "completed",
-]);
 
 /** The question bank. Added and deleted by hand; never edited. */
 export const questions = pgTable("questions", {
@@ -27,9 +16,15 @@ export const questions = pgTable("questions", {
     .defaultNow(),
 });
 
+/**
+ * `ended_at` is the whole of a session's status. Running or finished was once a
+ * `session_status` column beside it, saying the same thing twice — and a status
+ * can disagree with its timestamp, where a timestamp cannot disagree with
+ * itself. "Finished but the report failed" is not a status either: the absence
+ * of a `reports` row already says that.
+ */
 export const sessions = pgTable("sessions", {
   id: uuid("id").primaryKey().defaultRandom(),
-  status: sessionStatus("status").notNull().default("in_progress"),
   /**
    * How many questions the bank held when this session started. Stored rather
    * than derived, so growing the bank later does not retroactively change how
@@ -39,6 +34,7 @@ export const sessions = pgTable("sessions", {
   startedAt: timestamp("started_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  /** Null only while the interview is still open in the room. */
   endedAt: timestamp("ended_at", { withTimezone: true }),
 });
 
@@ -93,4 +89,3 @@ export type Turn = typeof turns.$inferSelect;
 export type NewTurn = typeof turns.$inferInsert;
 export type Report = typeof reports.$inferSelect;
 export type NewReport = typeof reports.$inferInsert;
-export type SessionStatus = Session["status"];

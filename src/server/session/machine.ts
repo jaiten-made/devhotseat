@@ -9,9 +9,13 @@
  * asks every question in the bank, in random order, so its length is simply
  * how many questions existed when it started. It needs at least one.
  *
+ * It ends two ways: the last answer, or END when the room is left. Both go
+ * through report generation, so there is one terminal path and no such thing
+ * as a session that was merely walked away from.
+ *
  * `generating_report` is never persisted. Report generation happens in-process
- * during the request that submits the final answer, so the database only ever
- * sees a session as in_progress or completed.
+ * during the request that ends the session, so the database only ever sees a
+ * session as running or ended — which is `ended_at` being null or not.
  */
 
 export type MachineState =
@@ -35,6 +39,8 @@ export type MachineEvent =
       readonly availableQuestions: number;
     }
   | { readonly type: "SUBMIT_ANSWER" }
+  /** Leaving the room. Ends the session wherever it had got to. */
+  | { readonly type: "END" }
   | { readonly type: "REPORT_READY" }
   | { readonly type: "REPORT_FAILED" };
 
@@ -86,10 +92,19 @@ export function transition(
 
   switch (state.status) {
     case "awaiting_answer": {
+      // Leaving ends it here, with however many answers were given. Even none:
+      // an interview walked out of at the first question is a short interview,
+      // not an unfinished one.
+      if (event.type === "END") {
+        return accept({
+          status: "generating_report",
+          questionCount: state.questionCount,
+        });
+      }
       if (event.type !== "SUBMIT_ANSWER") return reject("report_not_pending");
 
       // Auto-end: answering the final turn moves straight to report
-      // generation. There is no separate "end session" event.
+      // generation, the same place END lands.
       const nextPosition = state.position + 1;
       if (nextPosition > state.questionCount) {
         return accept({
@@ -105,7 +120,9 @@ export function transition(
     }
 
     case "generating_report": {
-      if (event.type === "SUBMIT_ANSWER") return reject("not_awaiting_answer");
+      if (event.type === "SUBMIT_ANSWER" || event.type === "END") {
+        return reject("not_awaiting_answer");
+      }
       return accept({
         status: "completed",
         questionCount: state.questionCount,
@@ -125,13 +142,14 @@ export function transition(
  */
 export function stateFromSession(
   session: {
-    readonly status: "in_progress" | "completed";
+    /** The status in full: set once, when the session ended. */
+    readonly endedAt: Date | null;
     readonly questionCount: number;
   },
   answeredCount: number,
   hasReport: boolean,
 ): MachineState {
-  if (session.status === "completed") {
+  if (session.endedAt !== null) {
     return {
       status: "completed",
       questionCount: session.questionCount,

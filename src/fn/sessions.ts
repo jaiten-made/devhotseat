@@ -4,6 +4,7 @@ import { getDb, getReportGenerator } from "../server/deps";
 import {
   createSession,
   deleteSession,
+  endSession,
   getSessionDetail,
   listSessions,
   submitAnswer,
@@ -50,6 +51,21 @@ export const answerTurn = createServerFn({ method: "POST" })
       data.id,
       data.answer,
     );
+    if (result === null)
+      return { ok: false as const, reason: "not_found" as const };
+    if (!result.ok) return { ok: false as const, reason: result.reason };
+    return { ok: true as const, session: await getSessionDetail(db, data.id) };
+  });
+
+/**
+ * Ends a session where it stands, which is what leaving the room does: the
+ * report is written on the answers given so far. Nothing is left running.
+ */
+export const leaveSession = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.uuid() }))
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const result = await endSession(db, getReportGenerator(), data.id);
     if (result === null)
       return { ok: false as const, reason: "not_found" as const };
     if (!result.ok) return { ok: false as const, reason: result.reason };

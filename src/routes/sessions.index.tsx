@@ -89,10 +89,7 @@ function SessionList() {
               <span className="text-sm text-muted-foreground">
                 {session.answeredCount} of {session.questionCount} answered
               </span>
-              <SessionStatus
-                status={session.status}
-                hasReport={session.hasReport}
-              />
+              <ReportState hasReport={session.hasReport} />
             </Link>
             <DeleteSession
               session={session}
@@ -161,29 +158,20 @@ function describeLoss(session: SessionRow): string {
     session.answeredCount === 1
       ? "1 answer"
       : `${session.answeredCount} answers`;
-  if (session.status === "in_progress") {
-    return `This session is still in progress. Its transcript and the ${answers} given so far will be deleted.`;
-  }
   return session.hasReport
     ? `Its transcript, ${answers} and feedback report will be deleted.`
     : `Its transcript and ${answers} will be deleted. It never had a report.`;
 }
 
 /**
- * Colour carries the meaning here: green for a finished session with its
- * report, amber for one still running, and muted grey for a finished session
- * whose report never arrived — an absence rather than a failure.
+ * Every session in this list has ended — leaving the room is what ends one —
+ * so the only thing left to report is whether the report arrived. Green for
+ * yes, muted grey for no: an absence rather than a failure.
+ *
+ * There was an amber "In progress" here once, for sessions nothing could end.
+ * See [24](../../docs/adr/0024-leaving-the-room-ends-the-interview.md).
  */
-function SessionStatus({
-  status,
-  hasReport,
-}: {
-  status: "in_progress" | "completed";
-  hasReport: boolean;
-}) {
-  if (status === "in_progress") {
-    return <span className="text-sm text-warning">In progress</span>;
-  }
+function ReportState({ hasReport }: { hasReport: boolean }) {
   return hasReport ? (
     <span className="text-sm text-success">Report ready</span>
   ) : (

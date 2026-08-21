@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  ArrowLeft,
   FileText,
   Keyboard,
   Mic,
@@ -26,9 +25,20 @@ import {
   TranscriptPanel,
   TurnBar,
 } from "@/components/interview";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { answerTurn } from "@/fn/sessions";
+import { answerTurn, leaveSession } from "@/fn/sessions";
 import { sessionQuery } from "@/lib/queries";
 import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
@@ -80,7 +90,8 @@ function SessionView() {
     );
   }
 
-  return session.data.status === "in_progress" ? (
+  // `ended_at` is the whole status: null means the room is still open.
+  return session.data.endedAt === null ? (
     <TurnLoop session={session.data} />
   ) : (
     <Transcript session={session.data} />
@@ -124,6 +135,11 @@ function isLastQuestion(session: SessionDetail): boolean {
  * under it the incidentals as plain ghost buttons. Only the bar is ever filled,
  * so the thing that moves the conversation on cannot be mistaken for the thing
  * that opens a panel. Hanging up lives in the header for the same reason.
+ *
+ * There is one way out and it ends the interview, so the header holds one exit
+ * rather than a back arrow beside it: two controls where only one thing can
+ * happen would have to be lying about something. See
+ * [24](../../docs/adr/0024-leaving-the-room-ends-the-interview.md).
  */
 function Room({
   session,
@@ -144,24 +160,27 @@ function Room({
   secondaries: ReactNode;
   children: ReactNode;
 }) {
-  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [showTranscript, setShowTranscript] = useState(false);
-  const leave = () => navigate({ to: "/sessions" });
+
+  // Leaving is an ending, so it goes through the server. Nothing navigates
+  // afterwards: the session comes back ended, and this page is already the
+  // transcript of an ended session, report and all.
+  const end = useMutation({
+    mutationFn: async () => {
+      const result = await leaveSession({ data: { id: session.id } });
+      if (!result.ok) throw new Error(describeEndFailure(result.reason));
+      return result;
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.sessions }),
+  });
 
   return (
     // A row, so the transcript stands beside the room rather than under it.
     <div className="fixed inset-0 z-50 flex bg-background">
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex shrink-0 items-center gap-3 border-b px-4 py-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={leave}
-            className="size-9 shrink-0"
-            aria-label="Leave the session"
-          >
-            <ArrowLeft className="size-5" />
-          </Button>
           <div className="min-w-0 flex-1">
             <p className="truncate font-semibold leading-tight">
               Interview session
@@ -171,16 +190,21 @@ function Room({
                 `Question ${session.currentPosition} of ${session.questionCount}`}
             </p>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={leave}
-            className="shrink-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-          >
-            <PhoneOff className="size-4" />
-            Leave
-          </Button>
+          <EndInterview
+            session={session}
+            onConfirm={() => end.mutate()}
+            pending={end.isPending}
+          />
         </header>
+
+        {end.isError && (
+          <p
+            role="alert"
+            className="shrink-0 border-b bg-destructive/5 px-4 py-2 text-center text-sm text-destructive"
+          >
+            {end.error.message} The interview is still running.
+          </p>
+        )}
 
         <main className="flex flex-1 flex-col items-center justify-center gap-6 overflow-y-auto px-4 py-6">
           {children}
@@ -213,6 +237,78 @@ function Room({
       />
     </div>
   );
+}
+
+function describeEndFailure(reason: string): string {
+  switch (reason) {
+    case "not_found":
+      return "That session no longer exists.";
+    case "session_already_ended":
+      return "This interview has already ended somewhere else.";
+    default:
+      return "Could not end the interview.";
+  }
+}
+
+/**
+ * The one way out of the room, and it ends the interview — so it says what that
+ * costs before doing it, the way deleting a session does.
+ *
+ * What it names is what the report will be written from, because that is the
+ * part that cannot be got back: the remaining questions are still in the bank
+ * and come round again in the next session.
+ */
+function EndInterview({
+  session,
+  onConfirm,
+  pending,
+}: {
+  session: SessionDetail;
+  onConfirm: () => void;
+  pending: boolean;
+}) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={pending}
+          className="shrink-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+        >
+          <PhoneOff className="size-4" />
+          {pending ? "Ending…" : "End interview"}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>End this interview?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {describeEnding(session)} You cannot come back to it.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep going</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={onConfirm}>
+            End interview
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function describeEnding(session: SessionDetail): string {
+  const left = session.questionCount - session.answeredCount;
+  if (session.answeredCount === 0) {
+    return "You have not answered anything yet, so there is nothing to write a report from.";
+  }
+  const answers =
+    session.answeredCount === 1
+      ? "1 answer"
+      : `${session.answeredCount} answers`;
+  const unasked = left === 1 ? "1 question" : `${left} questions`;
+  return `Your report will be written from the ${answers} you have given, and the remaining ${unasked} will go unanswered.`;
 }
 
 /**

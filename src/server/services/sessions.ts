@@ -16,12 +16,12 @@ export interface SessionTurn {
 
 export interface SessionDetail {
   readonly id: string;
-  readonly status: "in_progress" | "completed";
   readonly questionCount: number;
   readonly answeredCount: number;
   /** 1-based turn awaiting an answer, or null once the session has ended. */
   readonly currentPosition: number | null;
   readonly startedAt: Date;
+  /** Null while the interview is still running; the only status there is. */
   readonly endedAt: Date | null;
   readonly turns: ReadonlyArray<SessionTurn>;
   readonly report: {
@@ -110,7 +110,10 @@ export async function submitAnswer(
   }
 
   const [session] = await db
-    .select({ status: sessions.status, questionCount: sessions.questionCount })
+    .select({
+      endedAt: sessions.endedAt,
+      questionCount: sessions.questionCount,
+    })
     .from(sessions)
     .where(eq(sessions.id, sessionId));
   if (!session) return null;
@@ -138,9 +141,53 @@ export async function submitAnswer(
   return { ok: true };
 }
 
+export type EndSessionResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly reason: RejectionReason };
+
+/**
+ * Ends a session where it stands, which is what leaving the room does. The
+ * report is written on the answers actually given, so walking out after three
+ * of five still produces feedback on those three.
+ *
+ * Ending one that has already ended is a rejection rather than a no-op: two
+ * tabs on the same session should not silently overwrite each other's report.
+ *
+ * Returns null when the session does not exist.
+ */
+export async function endSession(
+  db: Database,
+  generator: ReportGenerator,
+  sessionId: string,
+): Promise<EndSessionResult | null> {
+  const [session] = await db
+    .select({
+      endedAt: sessions.endedAt,
+      questionCount: sessions.questionCount,
+    })
+    .from(sessions)
+    .where(eq(sessions.id, sessionId));
+  if (!session) return null;
+
+  const answeredCount = await countAnswered(db, sessionId);
+  const hasReport = await reportExists(db, sessionId);
+  const state = stateFromSession(session, answeredCount, hasReport);
+
+  const result = transition(state, { type: "END" });
+  if (!result.ok) return { ok: false, reason: result.reason };
+
+  await finishSession(db, generator, sessionId, session.questionCount);
+  return { ok: true };
+}
+
 /**
  * The terminal transition. Generation failure is not an error: the machine
  * still moves to completed, just without a report row.
+ *
+ * Only answered turns are sent to the generator. A session ended early has
+ * turns that were never asked, and a report judging you on questions you never
+ * heard would be worse than no report — which is why no answers at all ends the
+ * session without one. The UI already has to render that absence.
  */
 async function finishSession(
   db: Database,
@@ -154,21 +201,23 @@ async function finishSession(
       answerText: turns.answerText,
     })
     .from(turns)
-    .where(eq(turns.sessionId, sessionId))
+    .where(and(eq(turns.sessionId, sessionId), isNotNull(turns.answerText)))
     .orderBy(asc(turns.position));
 
   let generated: { content: string; model: string } | null = null;
-  try {
-    generated = await generator.generate(
-      rows.map((row) => ({
-        questionText: row.questionText,
-        answerText: row.answerText ?? "",
-      })),
-    );
-  } catch {
-    // A session with no report is a valid state, so swallow this and let the
-    // machine record the failure path instead.
-    generated = null;
+  if (rows.length > 0) {
+    try {
+      generated = await generator.generate(
+        rows.map((row) => ({
+          questionText: row.questionText,
+          answerText: row.answerText ?? "",
+        })),
+      );
+    } catch {
+      // A session with no report is a valid state, so swallow this and let the
+      // machine record the failure path instead.
+      generated = null;
+    }
   }
 
   const ended = transition(
@@ -193,7 +242,7 @@ async function finishSession(
     }
     await tx
       .update(sessions)
-      .set({ status: finalState.status, endedAt: new Date() })
+      .set({ endedAt: new Date() })
       .where(eq(sessions.id, sessionId));
   });
 }
@@ -209,8 +258,8 @@ export async function getSessionDetail(
   if (!session) return null;
 
   const answeredCount = await countAnswered(db, sessionId);
-  const inProgress = session.status === "in_progress";
-  const currentPosition = inProgress ? answeredCount + 1 : null;
+  const running = session.endedAt === null;
+  const currentPosition = running ? answeredCount + 1 : null;
 
   // While a session is running, only turns up to and including the current one
   // are returned. Later questions are chosen already, but handing them to the
@@ -244,7 +293,6 @@ export async function getSessionDetail(
 
   return {
     id: session.id,
-    status: session.status,
     questionCount: session.questionCount,
     answeredCount,
     currentPosition,
@@ -259,7 +307,6 @@ export async function listSessions(db: Database) {
   const rows = await db
     .select({
       id: sessions.id,
-      status: sessions.status,
       questionCount: sessions.questionCount,
       startedAt: sessions.startedAt,
       endedAt: sessions.endedAt,
@@ -286,8 +333,8 @@ export async function listSessions(db: Database) {
  * with it through the `ON DELETE CASCADE` on their foreign keys, so this is one
  * statement with no order to get wrong.
  *
- * Any status. An abandoned in-progress session has no other way out, since
- * nothing ends a session early.
+ * Running or ended alike, though leaving the room ends a session rather than
+ * abandoning it, so a running one only exists in another tab.
  *
  * Returns false when nothing matched, so a stale list can say so.
  */

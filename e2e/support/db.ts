@@ -28,12 +28,15 @@ export async function resetDatabase(): Promise<void> {
   }
 }
 
-/** A finished session with a full transcript and no report row. */
+/**
+ * A finished session with a full transcript and no report row. `ended_at` is
+ * what makes it finished — there is no status column.
+ */
 export async function seedSessionWithoutReport(): Promise<string> {
   const p = pool();
   try {
     const session = await p.query<{ id: string }>(
-      "INSERT INTO sessions (question_count, status, ended_at) VALUES (2, 'completed', now()) RETURNING id",
+      "INSERT INTO sessions (question_count, ended_at) VALUES (2, now()) RETURNING id",
     );
     const id = session.rows[0]?.id;
     if (!id) throw new Error("Failed to seed a session.");

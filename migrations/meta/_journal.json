@@ -8,6 +8,13 @@
       "when": 1787229994711,
       "tag": "0000_sloppy_vin_gonzales",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787322368175,
+      "tag": "0001_redundant_goblin_queen",
+      "breakpoints": true
     }
   ]
 }

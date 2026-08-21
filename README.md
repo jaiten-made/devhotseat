@@ -40,10 +40,15 @@ report generation needs it:
 cp .env.example .env
 ```
 
-Apply the migrations:
+Apply the migrations, to the dev database and then to the test one the
+integration and e2e suites use:
 
 ```bash
 pnpm db:migrate
+```
+
+```bash
+DATABASE_URL="$TEST_DATABASE_URL" pnpm db:migrate
 ```
 
 ## Running it
@@ -61,11 +66,16 @@ which the bar across the bottom is pressed once to start talking and again to
 hand your answer back, and the avatar in the middle is green only while the
 microphone is actually open. You can press to talk over a question
 that is still being read, which stops it. Replaying the question and showing
-the answers so far sit under the bar, and leaving is in the header.
-Typing is available at any time via **Type**, and is used automatically when
-the browser has no speech support or the microphone is refused. A session you
-do not want to keep can be deleted from the **Sessions** list; its transcript
-and report go with it.
+the answers so far sit under the bar.
+
+Before the first press the room shows a short briefing rather than the question,
+which is not revealed until it is spoken. **End interview** in the header is the
+one way out, and it ends the session there and then: the report is written from
+the answers given so far, and you cannot return to it. An interview is never
+left in progress. Typing is available at any time via **Type**, and is used
+automatically when the browser has no speech support or the microphone is
+refused. A session you do not want to keep can be deleted from the **Sessions**
+list; its transcript and report go with it.
 
 ## Testing
 

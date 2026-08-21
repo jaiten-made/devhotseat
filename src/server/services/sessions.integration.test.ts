@@ -6,6 +6,7 @@ import { addQuestion, deleteQuestion, listQuestions } from "./questions";
 import {
   createSession,
   deleteSession,
+  endSession,
   getSessionDetail,
   listSessions,
   submitAnswer,
@@ -39,6 +40,9 @@ async function start(): Promise<string> {
 const answer = (id: string, text: string) =>
   submitAnswer(h.db, h.reports, id, text);
 
+/** Leaving the room. */
+const end = (id: string) => endSession(h.db, h.reports, id);
+
 describe("starting a session", () => {
   it("is refused only when the bank is empty", async () => {
     const result = await createSession(h.db);
@@ -62,7 +66,7 @@ describe("starting a session", () => {
 
     await answer(id, "My only answer.");
     const detail = await getSessionDetail(h.db, id);
-    expect(detail?.status).toBe("completed");
+    expect(detail?.endedAt).not.toBeNull();
     expect(detail?.turns).toHaveLength(1);
     expect(detail?.report).not.toBeNull();
   });
@@ -106,7 +110,7 @@ describe("starting a session", () => {
     const id = await start();
     const [row] = await h.db.select().from(sessions).where(eq(sessions.id, id));
     expect(row?.questionCount).toBe(N);
-    expect(row?.status).toBe("in_progress");
+    // Running or ended is `ended_at` and nothing else.
     expect(row?.endedAt).toBeNull();
   });
 
@@ -148,7 +152,6 @@ describe("answering turn by turn", () => {
     for (let i = 1; i < N; i++) {
       await answer(id, `Answer ${i}`);
       const detail = await getSessionDetail(h.db, id);
-      expect(detail?.status).toBe("in_progress");
       expect(detail?.endedAt).toBeNull();
       // Still running, so no report has been asked for.
       expect(h.reports.calls).toHaveLength(0);
@@ -156,7 +159,6 @@ describe("answering turn by turn", () => {
 
     await answer(id, "Final answer");
     const ended = await getSessionDetail(h.db, id);
-    expect(ended?.status).toBe("completed");
     expect(ended?.endedAt).not.toBeNull();
     expect(ended?.currentPosition).toBeNull();
     expect(h.reports.calls).toHaveLength(1);
@@ -187,6 +189,96 @@ describe("answering turn by turn", () => {
   });
 });
 
+describe("ending early", () => {
+  it("ends a part-answered session and reports on what was answered", async () => {
+    await seedBank(N);
+    const id = await start();
+    await answer(id, "Answer 1");
+
+    expect(await end(id)).toEqual({ ok: true });
+
+    const detail = await getSessionDetail(h.db, id);
+    expect(detail?.endedAt).not.toBeNull();
+    expect(detail?.currentPosition).toBeNull();
+    expect(detail?.answeredCount).toBe(1);
+    // The whole transcript is readable once it is over, unanswered turns and
+    // all: they are what "ended early" looks like.
+    expect(detail?.turns).toHaveLength(N);
+    expect(detail?.report).not.toBeNull();
+
+    // Only the answered turn was sent to be marked. A report judging you on
+    // questions you never heard would be worse than no report.
+    const [passed] = h.reports.calls;
+    expect(passed).toHaveLength(1);
+    expect(passed?.map((t) => t.answerText)).toEqual(["Answer 1"]);
+  });
+
+  it("ends a session with no answers, and writes no report", async () => {
+    await seedBank(N);
+    const id = await start();
+
+    expect(await end(id)).toEqual({ ok: true });
+
+    const detail = await getSessionDetail(h.db, id);
+    expect(detail?.endedAt).not.toBeNull();
+    expect(detail?.report).toBeNull();
+    expect(h.reports.calls).toHaveLength(0);
+    expect(await h.db.select().from(reports)).toHaveLength(0);
+  });
+
+  it("refuses a further answer once it has been left", async () => {
+    await seedBank(N);
+    const id = await start();
+    await end(id);
+
+    expect(await answer(id, "One more")).toEqual({
+      ok: false,
+      reason: "session_already_ended",
+    });
+  });
+
+  it("refuses to end the same session twice", async () => {
+    await seedBank(N);
+    const id = await start();
+    await answer(id, "Answer 1");
+    await end(id);
+
+    expect(await end(id)).toEqual({
+      ok: false,
+      reason: "session_already_ended",
+    });
+    // The second attempt must not overwrite the first report.
+    expect(await h.db.select().from(reports)).toHaveLength(1);
+  });
+
+  it("does not end a session that already ended by itself", async () => {
+    await seedBank(1);
+    const id = await start();
+    await answer(id, "My only answer.");
+
+    expect(await end(id)).toEqual({
+      ok: false,
+      reason: "session_already_ended",
+    });
+  });
+
+  it("reports an unknown session", async () => {
+    expect(await end("11111111-1111-1111-1111-111111111111")).toBeNull();
+  });
+
+  it("leaves nothing running in the list", async () => {
+    await seedBank(N);
+    const id = await start();
+    await answer(id, "Answer 1");
+    await end(id);
+
+    const listed = await listSessions(h.db);
+    expect(listed).toHaveLength(1);
+    expect(listed[0]).toMatchObject({ id, answeredCount: 1, hasReport: true });
+    expect(listed[0]?.endedAt).not.toBeNull();
+  });
+});
+
 describe("the transcript and report", () => {
   it("runs the whole journey and reads back", async () => {
     await seedBank(N);
@@ -194,7 +286,7 @@ describe("the transcript and report", () => {
     for (let i = 1; i <= N; i++) await answer(id, `Answer ${i}`);
 
     const detail = await getSessionDetail(h.db, id);
-    expect(detail?.status).toBe("completed");
+    expect(detail?.endedAt).not.toBeNull();
     expect(detail?.turns).toHaveLength(N);
     expect(detail?.turns.map((t) => t.position)).toEqual([1, 2, 3]);
     expect(detail?.report).toMatchObject({
@@ -230,7 +322,7 @@ describe("the transcript and report", () => {
     for (let i = 1; i <= N; i++) await answer(id, `Answer ${i}`);
 
     const detail = await getSessionDetail(h.db, id);
-    expect(detail?.status).toBe("completed");
+    expect(detail?.endedAt).not.toBeNull();
     expect(detail?.report).toBeNull();
     expect(detail?.turns).toHaveLength(N);
     expect(await h.db.select().from(reports)).toHaveLength(0);
@@ -245,7 +337,6 @@ describe("the transcript and report", () => {
     expect(listed).toHaveLength(1);
     expect(listed[0]).toMatchObject({
       id,
-      status: "completed",
       questionCount: N,
       answeredCount: N,
       hasReport: true,

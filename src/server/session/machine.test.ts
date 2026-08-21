@@ -8,6 +8,7 @@ import {
 
 const START: MachineEvent = { type: "START", availableQuestions: 3 };
 const SUBMIT: MachineEvent = { type: "SUBMIT_ANSWER" };
+const END: MachineEvent = { type: "END" };
 const READY: MachineEvent = { type: "REPORT_READY" };
 const FAILED: MachineEvent = { type: "REPORT_FAILED" };
 
@@ -45,6 +46,12 @@ describe("transition — the full state x event matrix", () => {
       { ok: false, reason: "session_not_started" },
     ],
     [
+      "no session + END",
+      null,
+      END,
+      { ok: false, reason: "session_not_started" },
+    ],
+    [
       "no session + READY",
       null,
       READY,
@@ -69,6 +76,7 @@ describe("transition — the full state x event matrix", () => {
       SUBMIT,
       { ok: true, state: awaiting(2) },
     ],
+    ["mid session + END", awaiting(1), END, { ok: true, state: generating }],
     [
       "mid session + READY",
       awaiting(1),
@@ -94,6 +102,7 @@ describe("transition — the full state x event matrix", () => {
       SUBMIT,
       { ok: true, state: generating },
     ],
+    ["final turn + END", awaiting(3), END, { ok: true, state: generating }],
     [
       "final turn + READY",
       awaiting(3),
@@ -119,6 +128,12 @@ describe("transition — the full state x event matrix", () => {
       SUBMIT,
       { ok: false, reason: "not_awaiting_answer" },
     ],
+    [
+      "generating + END",
+      generating,
+      END,
+      { ok: false, reason: "not_awaiting_answer" },
+    ],
     ["generating + READY", generating, READY, { ok: true, state: completed }],
     [
       "generating + FAILED",
@@ -140,6 +155,12 @@ describe("transition — the full state x event matrix", () => {
       "completed + SUBMIT",
       completed,
       SUBMIT,
+      { ok: false, reason: "session_already_ended" },
+    ],
+    [
+      "completed + END",
+      completed,
+      END,
       { ok: false, reason: "session_already_ended" },
     ],
     [
@@ -272,10 +293,45 @@ describe("auto-ending", () => {
   });
 });
 
+describe("ending early", () => {
+  // Leaving the room. The session ends where it stands rather than staying
+  // open, so there is no such thing as a session nothing can finish.
+  it("ends from any turn, not just the last", () => {
+    expect(transition(awaiting(1), END)).toEqual({
+      ok: true,
+      state: generating,
+    });
+    expect(transition(awaiting(2), END)).toEqual({
+      ok: true,
+      state: generating,
+    });
+  });
+
+  it("takes the same terminal path as the last answer", () => {
+    const left = transition(awaiting(1), END);
+    const answered = transition(awaiting(3), SUBMIT);
+    if (!left.ok || !answered.ok) throw new Error("expected both to be taken");
+    expect(left.state).toEqual(answered.state);
+  });
+
+  it("refuses to end a session twice", () => {
+    const left = transition(awaiting(1), END);
+    if (!left.ok) throw new Error("expected a generating session");
+    expect(transition(left.state, END)).toEqual({
+      ok: false,
+      reason: "not_awaiting_answer",
+    });
+    expect(transition(completed, END)).toEqual({
+      ok: false,
+      reason: "session_already_ended",
+    });
+  });
+});
+
 describe("stateFromSession", () => {
   it("puts a fresh session on the first turn", () => {
     expect(
-      stateFromSession({ status: "in_progress", questionCount: 5 }, 0, false),
+      stateFromSession({ endedAt: null, questionCount: 5 }, 0, false),
     ).toEqual({
       status: "awaiting_answer",
       position: 1,
@@ -285,7 +341,7 @@ describe("stateFromSession", () => {
 
   it("puts a part-answered session on the next unanswered turn", () => {
     expect(
-      stateFromSession({ status: "in_progress", questionCount: 5 }, 2, false),
+      stateFromSession({ endedAt: null, questionCount: 5 }, 2, false),
     ).toEqual({
       status: "awaiting_answer",
       position: 3,
@@ -295,7 +351,11 @@ describe("stateFromSession", () => {
 
   it("reads a completed session with a report", () => {
     expect(
-      stateFromSession({ status: "completed", questionCount: 5 }, 5, true),
+      stateFromSession(
+        { endedAt: new Date("2026-08-22T00:00:00Z"), questionCount: 5 },
+        5,
+        true,
+      ),
     ).toEqual({
       status: "completed",
       questionCount: 5,
@@ -305,7 +365,11 @@ describe("stateFromSession", () => {
 
   it("reads a completed session whose report is missing", () => {
     expect(
-      stateFromSession({ status: "completed", questionCount: 5 }, 5, false),
+      stateFromSession(
+        { endedAt: new Date("2026-08-22T00:00:00Z"), questionCount: 5 },
+        5,
+        false,
+      ),
     ).toEqual({
       status: "completed",
       questionCount: 5,
@@ -313,9 +377,21 @@ describe("stateFromSession", () => {
     });
   });
 
+  it("can be ended once rebuilt from a running session", () => {
+    const state = stateFromSession(
+      { endedAt: null, questionCount: 5 },
+      2,
+      false,
+    );
+    expect(transition(state, END)).toEqual({
+      ok: true,
+      state: { status: "generating_report", questionCount: 5 },
+    });
+  });
+
   it("rejects a further answer once rebuilt from a completed session", () => {
     const state = stateFromSession(
-      { status: "completed", questionCount: 5 },
+      { endedAt: new Date("2026-08-22T00:00:00Z"), questionCount: 5 },
       5,
       true,
     );
