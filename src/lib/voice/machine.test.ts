@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   canSubmit,
   describeSpeechError,
-  type OrbState,
-  orbStateFor,
   shouldListen,
   type VoiceEvent,
   type VoiceState,
@@ -12,12 +10,14 @@ import {
 
 const idle: VoiceState = { status: "idle" };
 const speaking: VoiceState = { status: "speaking" };
+const ready: VoiceState = { status: "ready" };
 const listening: VoiceState = { status: "listening" };
 const submitting: VoiceState = { status: "submitting" };
 const blocked: VoiceState = { status: "blocked", reason: "not-allowed" };
 
 const ASK: VoiceEvent = { type: "ASK" };
 const SPOKEN: VoiceEvent = { type: "SPOKEN" };
+const LISTEN: VoiceEvent = { type: "LISTEN" };
 const SUBMIT: VoiceEvent = { type: "SUBMIT" };
 const SUBMITTED: VoiceEvent = { type: "SUBMITTED" };
 const SUBMIT_FAILED: VoiceEvent = { type: "SUBMIT_FAILED" };
@@ -31,30 +31,44 @@ describe("voiceTransition — the full state x event matrix", () => {
   > = [
     ["idle + ASK", idle, ASK, speaking],
     ["idle + SPOKEN", idle, SPOKEN, idle],
+    ["idle + LISTEN", idle, LISTEN, idle],
     ["idle + SUBMIT", idle, SUBMIT, idle],
     ["idle + SUBMITTED", idle, SUBMITTED, idle],
     ["idle + SUBMIT_FAILED", idle, SUBMIT_FAILED, idle],
 
     ["speaking + ASK", speaking, ASK, speaking],
-    ["speaking + SPOKEN", speaking, SPOKEN, listening],
+    ["speaking + SPOKEN", speaking, SPOKEN, ready],
+    // Cutting in over the question is allowed, and is the only route to an
+    // open microphone that does not wait on the voice claiming to be done.
+    ["speaking + LISTEN", speaking, LISTEN, listening],
     ["speaking + SUBMIT", speaking, SUBMIT, speaking],
     ["speaking + SUBMITTED", speaking, SUBMITTED, speaking],
     ["speaking + SUBMIT_FAILED", speaking, SUBMIT_FAILED, speaking],
 
+    ["ready + ASK", ready, ASK, speaking],
+    ["ready + SPOKEN", ready, SPOKEN, ready],
+    ["ready + LISTEN", ready, LISTEN, listening],
+    ["ready + SUBMIT", ready, SUBMIT, ready],
+    ["ready + SUBMITTED", ready, SUBMITTED, ready],
+    ["ready + SUBMIT_FAILED", ready, SUBMIT_FAILED, ready],
+
     ["listening + ASK", listening, ASK, speaking],
     ["listening + SPOKEN", listening, SPOKEN, listening],
+    ["listening + LISTEN", listening, LISTEN, listening],
     ["listening + SUBMIT", listening, SUBMIT, submitting],
     ["listening + SUBMITTED", listening, SUBMITTED, listening],
     ["listening + SUBMIT_FAILED", listening, SUBMIT_FAILED, listening],
 
     ["submitting + ASK", submitting, ASK, submitting],
     ["submitting + SPOKEN", submitting, SPOKEN, submitting],
+    ["submitting + LISTEN", submitting, LISTEN, submitting],
     ["submitting + SUBMIT", submitting, SUBMIT, submitting],
     ["submitting + SUBMITTED", submitting, SUBMITTED, idle],
     ["submitting + SUBMIT_FAILED", submitting, SUBMIT_FAILED, listening],
 
     ["blocked + ASK", blocked, ASK, blocked],
     ["blocked + SPOKEN", blocked, SPOKEN, blocked],
+    ["blocked + LISTEN", blocked, LISTEN, blocked],
     ["blocked + SUBMIT", blocked, SUBMIT, blocked],
     ["blocked + SUBMITTED", blocked, SUBMITTED, blocked],
     ["blocked + SUBMIT_FAILED", blocked, SUBMIT_FAILED, blocked],
@@ -67,6 +81,7 @@ describe("voiceTransition — the full state x event matrix", () => {
   it.each([
     ["idle", idle],
     ["speaking", speaking],
+    ["ready", ready],
     ["listening", listening],
     ["submitting", submitting],
     ["blocked", blocked],
@@ -88,11 +103,26 @@ describe("one turn, start to finish", () => {
     };
 
     expect(step(ASK)).toEqual(speaking);
-    expect(step(SPOKEN)).toEqual(listening);
+    // The voice finishing does not open the microphone. Nothing does but a
+    // press, which is the whole point.
+    expect(step(SPOKEN)).toEqual(ready);
+    expect(shouldListen(state)).toBe(false);
+    expect(step(LISTEN)).toEqual(listening);
     expect(step(SUBMIT)).toEqual(submitting);
     expect(step(SUBMITTED)).toEqual(idle);
     // The next turn starts the same way.
     expect(step(ASK)).toEqual(speaking);
+  });
+
+  it("lets the user cut in without waiting for the question to finish", () => {
+    let state: VoiceState = idle;
+    state = voiceTransition(state, ASK);
+    expect(state).toEqual(speaking);
+    // No SPOKEN in between: the question is still being read.
+    state = voiceTransition(state, LISTEN);
+    expect(state).toEqual(listening);
+    expect(shouldListen(state)).toBe(true);
+    expect(canSubmit(state)).toBe(true);
   });
 
   it("keeps listening when a submission fails, so the answer is not lost", () => {
@@ -101,31 +131,42 @@ describe("one turn, start to finish", () => {
     expect(canSubmit(state)).toBe(true);
   });
 
-  it("moves on to listening even when the question could not be spoken", () => {
-    // SPOKEN is sent whether synthesis finished or never started.
-    expect(voiceTransition(speaking, SPOKEN)).toEqual(listening);
+  it("still offers the turn when the question could not be spoken", () => {
+    // SPOKEN is sent whether synthesis finished or never started, and either
+    // way it lands in `ready` with the microphone shut, waiting on a press.
+    const state = voiceTransition(speaking, SPOKEN);
+    expect(state).toEqual(ready);
+    expect(shouldListen(state)).toBe(false);
+    expect(voiceTransition(state, LISTEN)).toEqual(listening);
   });
 });
 
 describe("guards", () => {
   it("opens the microphone only while listening", () => {
-    expect([idle, speaking, submitting, blocked].map(shouldListen)).toEqual([
-      false,
-      false,
-      false,
-      false,
-    ]);
+    expect(
+      [idle, speaking, ready, submitting, blocked].map(shouldListen),
+    ).toEqual([false, false, false, false, false]);
     expect(shouldListen(listening)).toBe(true);
   });
 
   it("allows submitting only while listening", () => {
-    expect([idle, speaking, submitting, blocked].map(canSubmit)).toEqual([
-      false,
-      false,
-      false,
-      false,
-    ]);
+    expect([idle, speaking, ready, submitting, blocked].map(canSubmit)).toEqual(
+      [false, false, false, false, false],
+    );
     expect(canSubmit(listening)).toBe(true);
+  });
+
+  it("takes a press to open the microphone from either speaking state", () => {
+    // Both, because interrupting is allowed. Accepting LISTEN only after
+    // SPOKEN would put the microphone behind a signal that cannot be trusted.
+    expect(voiceTransition(speaking, LISTEN)).toEqual(listening);
+    expect(voiceTransition(ready, LISTEN)).toEqual(listening);
+  });
+
+  it("ignores a press where there is nothing to answer", () => {
+    for (const state of [idle, submitting, blocked]) {
+      expect(voiceTransition(state, LISTEN)).toEqual(state);
+    }
   });
 });
 
@@ -149,65 +190,5 @@ describe("describeSpeechError", () => {
 
   it("falls back to quoting an unknown code rather than swallowing it", () => {
     expect(describeSpeechError("something-new")).toContain("something-new");
-  });
-});
-
-describe("orbStateFor — the avatar's look for every voice state", () => {
-  // Every state is listed twice over, so adding one forces a decision about
-  // how the avatar should look rather than defaulting to inert.
-  const cases: ReadonlyArray<[label: string, from: VoiceState, to: OrbState]> =
-    [
-      ["speaking", speaking, "speaking"],
-      ["listening", listening, "listening"],
-      // Neither party is talking, so the avatar claims neither colour.
-      ["idle", idle, "idle"],
-      ["submitting", submitting, "idle"],
-      // A blocked microphone renders an overlay over the stage; the avatar does
-      // not need to say it a second time in a colour of its own.
-      ["blocked", blocked, "idle"],
-    ];
-
-  for (const [label, from, to] of cases) {
-    it(`${label} -> ${to}`, () => {
-      expect(orbStateFor(from)).toBe(to);
-    });
-  }
-
-  it("has exactly one look per party, and no others", () => {
-    const looks = new Set(cases.map(([, from]) => orbStateFor(from)));
-    expect([...looks].sort()).toEqual(["idle", "listening", "speaking"]);
-  });
-});
-
-describe("the avatar and the microphone agree", () => {
-  // The rule the room obeys, written where it can fail a build: black while
-  // the interviewer talks, green when it is your turn, and no way to be heard
-  // in between. Both halves are checked together because each is already
-  // correct on its own — what broke in practice was them disagreeing.
-  const every: ReadonlyArray<VoiceState> = [
-    idle,
-    speaking,
-    listening,
-    submitting,
-    blocked,
-  ];
-
-  for (const state of every) {
-    it(`${state.status} -> ${orbStateFor(state)}: mic ${
-      shouldListen(state) ? "open" : "shut"
-    }`, () => {
-      // Green and an open microphone are the same fact, in both directions.
-      expect(orbStateFor(state) === "listening").toBe(shouldListen(state));
-      expect(orbStateFor(state) === "listening").toBe(canSubmit(state));
-    });
-  }
-
-  it("is never black and listening at once", () => {
-    const talking = every.filter((state) => orbStateFor(state) === "speaking");
-    expect(talking).toEqual([speaking]);
-    for (const state of talking) {
-      expect(shouldListen(state)).toBe(false);
-      expect(canSubmit(state)).toBe(false);
-    }
   });
 });

@@ -33,8 +33,6 @@ import { cn } from "@/lib/utils";
 import {
   canSubmit,
   describeSpeechError,
-  type OrbState,
-  orbStateFor,
   shouldListen,
   type VoiceEvent,
   type VoiceState,
@@ -215,16 +213,17 @@ function Room({
  */
 function Stage({
   session,
-  orbState,
+  listening = false,
   children,
 }: {
   session: SessionDetail;
-  orbState: OrbState;
+  /** Whether the microphone is open; see `Orb`. */
+  listening?: boolean;
   children?: ReactNode;
 }) {
   return (
     <>
-      <Orb state={orbState} />
+      <Orb listening={listening} />
       <h1 className="max-w-xl text-balance text-center text-xl font-semibold tracking-tight">
         {currentQuestion(session)}
       </h1>
@@ -258,35 +257,43 @@ function voiceTurnBar(
   session: SessionDetail,
   voice: VoiceState,
   hasWords: boolean,
+  onStartTalking: () => void,
   onSubmit: () => void,
 ): TurnBarProps {
   switch (voice.status) {
+    // Pressable while the question is still being read: interrupting is
+    // allowed, and the hint says so rather than telling you to wait.
     case "speaking":
+    case "ready":
       return {
-        icon: <Volume2 className="size-6" />,
-        title: "Interviewer's turn",
-        hint: "Reading the question aloud…",
+        icon: <Mic className="size-6" />,
+        title: "Start answering",
+        hint:
+          voice.status === "speaking"
+            ? "Press when you want to talk. You can cut in while the question is still being read."
+            : "Press to open the microphone.",
+        onClick: onStartTalking,
       };
     case "listening":
       if (!hasWords) {
         return {
-          icon: <Mic className="size-6 animate-pulse" />,
-          title: "Your turn",
-          hint: "Start speaking — your words appear above.",
+          icon: <Mic className="size-6" />,
+          title: "Listening",
+          hint: "Your words appear above as you speak.",
         };
       }
       return isLastQuestion(session)
         ? {
-            icon: <Mic className="size-6" />,
-            title: "Your turn",
-            hint: "Tap when you have finished. This ends the session and writes your feedback report.",
+            icon: <Send className="size-6" />,
+            title: "Send final answer",
+            hint: "This ends the session and writes your feedback report.",
             tone: "warning",
             onClick: onSubmit,
           }
         : {
-            icon: <Mic className="size-6" />,
-            title: "Your turn",
-            hint: "Tap when you have finished answering.",
+            icon: <Send className="size-6" />,
+            title: "Send answer",
+            hint: "Hands the turn back to the interviewer.",
             onClick: onSubmit,
           };
     case "submitting":
@@ -369,6 +376,14 @@ function VoiceTurn({
     }
   }, [recognition.error, send]);
 
+  // Interrupting is what makes the missing completion signal harmless: the
+  // voice is silenced here, so the microphone is never open while the app is
+  // talking, whatever `speechSynthesis` believes about being finished.
+  const startTalking = () => {
+    cancel();
+    send({ type: "LISTEN" });
+  };
+
   const handleSubmit = () => {
     // Read from refs, not React state, so the last committed words are included.
     const answer = recognition.getTranscript();
@@ -417,10 +432,10 @@ function VoiceTurn({
     return (
       <Room
         session={session}
-        turn={voiceTurnBar(session, voice, false, handleSubmit)}
+        turn={voiceTurnBar(session, voice, false, startTalking, handleSubmit)}
         secondaries={typeAction}
       >
-        <Stage session={session} orbState="idle">
+        <Stage session={session}>
           <ErrorOverlay message={describeSpeechError(voice.reason)}>
             <Button onClick={onUseTyping}>Type my answer instead</Button>
           </ErrorOverlay>
@@ -435,14 +450,14 @@ function VoiceTurn({
   return (
     <Room
       session={session}
-      turn={voiceTurnBar(session, voice, hasWords, handleSubmit)}
+      turn={voiceTurnBar(session, voice, hasWords, startTalking, handleSubmit)}
       secondaries={
         <>
           <Button
             variant="ghost"
             size="sm"
             onClick={readAgain}
-            disabled={voice.status === "speaking" || submit.isPending}
+            disabled={submit.isPending}
             className="text-muted-foreground"
           >
             <Volume2 className="size-4" />
@@ -452,7 +467,7 @@ function VoiceTurn({
         </>
       }
     >
-      <Stage session={session} orbState={orbStateFor(voice)}>
+      <Stage session={session} listening={listening}>
         {/* Live captions: committed words plain, words still in flight italic. */}
         {canSubmit(voice) && (
           <p className="max-w-lg text-center text-sm">
@@ -552,9 +567,9 @@ function TypedTurn({
       }
     >
       {/* The avatar stays put so switching input modes does not change rooms.
-          Typing is never the interviewer's turn nor a spoken one, so it is
-          always inert; the turn bar reports saving. */}
-      <Stage session={session} orbState="idle">
+          Typing never opens the microphone, so it is always inert; the turn
+          bar reports saving. */}
+      <Stage session={session}>
         <Textarea
           value={answer}
           onChange={(event) => setAnswer(event.target.value)}

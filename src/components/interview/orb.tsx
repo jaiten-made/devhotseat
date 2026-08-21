@@ -1,58 +1,48 @@
-import { Mic } from "lucide-react";
+import { Mic, MicOff } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { OrbState } from "@/lib/voice/machine";
 
 /**
- * The interviewer's avatar: three concentric circles that say whose turn it is
- * by colour, and by nothing else.
+ * The interviewer's avatar: three concentric circles reporting one thing,
+ * whether the microphone is open. Green when it is, grey when it is not.
  *
- * Black while the interviewer is talking, green while it is the user's turn,
- * grey when it is neither. It does not throb, ping, breathe or swell.
+ * It takes the same boolean that opens the microphone rather than a look
+ * derived from the voice state, so the two cannot fall out of step — there is
+ * nothing for them to disagree about. An earlier version coloured itself by
+ * whose turn it was, which read well but rested on knowing when the voice had
+ * stopped, and `speechSynthesis` cannot tell you that. Reporting the
+ * microphone is a fact the app owns. See
+ * [22](../../../docs/adr/0022-the-user-declares-their-turn.md).
  *
- * That is a deliberate reduction — see
- * [21](../../../docs/adr/0021-the-avatar-is-two-colours.md). The animated
- * version was driven by word-boundary events from `speechSynthesis` and by a
- * second microphone stream feeding an `AnalyserNode`, which made the avatar the
- * most complicated thing on the screen and, because both signals are
- * unreliable on Chrome's network voices, an unreliable read on what was
- * actually happening. Colour alone cannot go out of step with the state
- * machine, because there is nothing else for it to be out of step with.
- *
- * A colour transition is kept: the hand-over is worth seeing, and it is driven
- * by the state change itself rather than by a signal that has to be sampled.
+ * It does not throb, ping, breathe or swell —
+ * [21](0021-the-avatar-is-two-colours.md) still holds for everything except
+ * what the colours mean.
  */
-export function Orb({ state }: { state: OrbState }) {
+export function Orb({ listening }: { listening: boolean }) {
   return (
     <div className="relative flex size-40 items-center justify-center">
       <span
         className={cn(
           "absolute inset-0 rounded-full transition-colors duration-500",
-          state === "speaking" && "bg-primary/20",
-          state === "listening" && "bg-success/20",
+          listening && "bg-success/20",
         )}
       />
       <span
         className={cn(
           "absolute inset-4 rounded-full transition-colors duration-500",
-          state === "idle" && "bg-muted",
-          state === "speaking" && "bg-primary/30",
-          state === "listening" && "bg-success/30",
+          listening ? "bg-success/30" : "bg-muted",
         )}
       />
       <span
         className={cn(
           "relative flex size-24 items-center justify-center rounded-full shadow-lg transition-colors duration-500",
-          state === "idle" && "bg-muted",
-          state === "speaking" && "bg-primary",
-          state === "listening" && "bg-success",
+          listening ? "bg-success" : "bg-muted",
         )}
       >
-        <Mic
-          className={cn(
-            "size-8 transition-colors duration-300",
-            state === "idle" ? "text-muted-foreground" : "text-white",
-          )}
-        />
+        {listening ? (
+          <Mic className="size-8 text-white transition-colors duration-300" />
+        ) : (
+          <MicOff className="size-8 text-muted-foreground transition-colors duration-300" />
+        )}
       </span>
     </div>
   );

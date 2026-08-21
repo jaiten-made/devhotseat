@@ -1,5 +1,7 @@
 # 21. The avatar is two colours
 
+> **Superseded by [22](0022-the-user-declares-their-turn.md).**
+
 Supersedes [0018](0018-the-avatar-animates-from-the-audio.md).
 
 ## Decision

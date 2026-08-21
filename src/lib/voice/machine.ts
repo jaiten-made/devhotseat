@@ -1,6 +1,16 @@
 /**
  * The client-side voice loop for one turn: the question is spoken, then the
- * microphone opens, then the answer is submitted.
+ * user presses to talk, then the answer is submitted.
+ *
+ * The press is load-bearing. `speechSynthesis` renders straight to the output
+ * device and hands out no audio object, so there is no way to observe when the
+ * voice has actually stopped — `end` is the engine's claim, and it can be
+ * early. Anything that opened the microphone off that signal would sooner or
+ * later be recording while the app was still talking, and transcribing the
+ * question into the answer. So the app stops guessing: the user says when they
+ * are talking, which is a fact rather than an inference, and pressing while
+ * the question is still being read cancels it the way interrupting a person
+ * would. See [22](../../../docs/adr/0022-the-user-declares-their-turn.md).
  *
  * Deliberately separate from the session machine in src/server/session. That
  * one owns what is persisted — which turn is current and when the session ends
@@ -12,8 +22,17 @@
  */
 
 export type VoiceState =
+  /** Waiting on the turn, or on the server. */
   | { readonly status: "idle" }
+  /** The question is being read. The microphone is shut. */
   | { readonly status: "speaking" }
+  /**
+   * The question has been read, or the engine says it has. The microphone is
+   * still shut: it opens when the user presses, not when the voice claims to
+   * be finished.
+   */
+  | { readonly status: "ready" }
+  /** The microphone is open. */
   | { readonly status: "listening" }
   | { readonly status: "submitting" }
   /** Microphone unavailable or refused; the UI falls back to typing. */
@@ -24,6 +43,11 @@ export type VoiceEvent =
   | { readonly type: "ASK" }
   /** Speech synthesis finished, or could not start. */
   | { readonly type: "SPOKEN" }
+  /**
+   * The user pressed to talk. Valid while the question is still being read:
+   * that is an interruption, and the caller silences the voice.
+   */
+  | { readonly type: "LISTEN" }
   | { readonly type: "SUBMIT" }
   | { readonly type: "SUBMITTED" }
   | { readonly type: "SUBMIT_FAILED" }
@@ -52,9 +76,17 @@ export function voiceTransition(
       return event.type === "ASK" ? { status: "speaking" } : state;
 
     case "speaking":
-      // Whether the voice finished or never started, the turn moves on to
-      // listening: a failed read-out must not strand the session.
-      return event.type === "SPOKEN" ? { status: "listening" } : state;
+      // Interrupting is allowed, and is the only way the microphone opens
+      // while the voice might still be going.
+      if (event.type === "LISTEN") return { status: "listening" };
+      // Whether the voice finished or never started, the turn is now the
+      // user's to take: a failed read-out must not strand the session.
+      return event.type === "SPOKEN" ? { status: "ready" } : state;
+
+    case "ready":
+      if (event.type === "LISTEN") return { status: "listening" };
+      // Re-reading the question.
+      return event.type === "ASK" ? { status: "speaking" } : state;
 
     case "listening":
       if (event.type === "SUBMIT") return { status: "submitting" };
@@ -80,42 +112,6 @@ export function shouldListen(state: VoiceState): boolean {
 /** Answers can only be sent while listening, and only once. */
 export function canSubmit(state: VoiceState): boolean {
   return state.status === "listening";
-}
-
-/**
- * The look the interviewer's avatar takes: black while the interviewer talks,
- * green while it is the user's turn, inert when it is neither.
- *
- * Named after the activity rather than the state it came from, because the
- * typed turn has no voice loop and still needs an avatar.
- */
-export type OrbState = "idle" | "speaking" | "listening";
-
-/**
- * Which look goes with the current voice state. Kept here with the states it
- * is derived from, and pure, so the mapping is covered by unit tests rather
- * than by eye — a stuck or wrongly coloured avatar is the one bug in this UI
- * that a user would notice immediately and a test would otherwise miss.
- *
- * Whose turn it is, and nothing else. It takes no account of recognition
- * faults: during one it is still the user's turn, so the avatar stays green
- * and the error text below it says what is wrong. A blocked microphone is not
- * the avatar's job either — that turn renders an overlay over the top.
- */
-export function orbStateFor(state: VoiceState): OrbState {
-  switch (state.status) {
-    case "speaking":
-      return "speaking";
-    case "listening":
-      return "listening";
-    // Between turns: the interviewer is not talking and it is not the user's
-    // turn either, so the avatar claims neither. The turn bar says what is
-    // being waited on.
-    case "idle":
-    case "submitting":
-    case "blocked":
-      return "idle";
-  }
 }
 
 /**
