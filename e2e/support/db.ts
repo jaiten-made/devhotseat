@@ -51,3 +51,32 @@ export async function seedSessionWithoutReport(): Promise<string> {
     await p.end();
   }
 }
+
+/**
+ * A finished session whose report is prose only, with no scored rubric — what
+ * every report written before scoring existed looks like. Seeded rather than
+ * driven through the UI because the stub always returns a full rubric.
+ */
+export async function seedSessionWithProseOnlyReport(): Promise<string> {
+  const p = pool();
+  try {
+    const session = await p.query<{ id: string }>(
+      "INSERT INTO sessions (question_count, ended_at) VALUES (1, now()) RETURNING id",
+    );
+    const id = session.rows[0]?.id;
+    if (!id) throw new Error("Failed to seed a session.");
+    await p.query(
+      `INSERT INTO turns (session_id, position, question_text, answer_text, answered_at)
+       VALUES ($1, 1, 'Seeded question one?', 'Seeded answer one.', now())`,
+      [id],
+    );
+    await p.query(
+      `INSERT INTO reports (session_id, content, model, structured)
+       VALUES ($1, 'This report is prose only, written before scoring existed.', 'legacy-model', NULL)`,
+      [id],
+    );
+    return id;
+  } finally {
+    await p.end();
+  }
+}

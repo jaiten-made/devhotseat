@@ -1,11 +1,13 @@
 import {
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
+import type { StructuredReport } from "../../lib/report/schema";
 
 /** The question bank. Added and deleted by hand; never edited. */
 export const questions = pgTable("questions", {
@@ -74,6 +76,12 @@ export const reports = pgTable("reports", {
     .unique()
     .references(() => sessions.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
+  /**
+   * The scored STAR-L rubric behind the prose. Nullable on purpose: reports
+   * written before scoring existed have none, and a model that returns
+   * unusable JSON but usable prose still writes a row.
+   */
+  structured: jsonb("structured").$type<StructuredReport>(),
   /** Which model wrote it, so a later prompt or model change is traceable. */
   model: text("model").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })

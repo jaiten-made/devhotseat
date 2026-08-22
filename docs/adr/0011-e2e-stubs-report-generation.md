@@ -6,7 +6,11 @@ Playwright drives the real stack: a real Vite server, real server functions,
 real Postgres. Two things are swapped by environment variable in the
 `webServer` config:
 
-- `HOTSEAT_STUB_REPORTS=1` returns fixed report text instead of calling Gemini.
+- `HOTSEAT_STUB_REPORTS=1` returns a fixed report instead of calling Gemini.
+  Since ADR 0025 that includes a full STAR-L rubric over whatever turns were
+  sent, with scores cycling by turn so the radar draws a lopsided shape rather
+  than a regular pentagon — a chart that looked the same however it was wired
+  would not be worth asserting on.
 - `DATABASE_URL` points at the test database, never the dev one.
 
 ## Why

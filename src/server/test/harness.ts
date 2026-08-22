@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import type { StructuredReport } from "../../lib/report/schema";
 import type { TranscriptTurn } from "../ai/prompt";
 import { createDatabase, type Database } from "../db";
 import { setDependencies } from "../deps";
@@ -11,19 +12,55 @@ import { requireEnv } from "../env";
 export function createStubReportGenerator() {
   const stub = {
     calls: [] as ReadonlyArray<TranscriptTurn>[],
-    /** Flip to "failure" to exercise the session-with-no-report path. */
-    mode: "success" as "success" | "failure",
+    /**
+     * "failure" exercises the session-with-no-report path; "prose_only" the
+     * model that wrote usable prose but an unusable rubric.
+     */
+    mode: "success" as "success" | "failure" | "prose_only",
     content: "Stubbed feedback report.",
     model: "stub-model",
+    /** Overwritten per test to assert on specific scores. */
+    structured: null as StructuredReport | null,
     async generate(turns: ReadonlyArray<TranscriptTurn>) {
       stub.calls.push(turns);
       if (stub.mode === "failure") {
         throw new Error("Stubbed generation failure.");
       }
-      return { content: stub.content, model: stub.model };
+      const structured =
+        stub.mode === "prose_only"
+          ? null
+          : (stub.structured ?? stubScores(turns, stub.content));
+      return { content: stub.content, structured, model: stub.model };
     },
   };
   return stub;
+}
+
+/** A valid rubric over whatever turns were sent, so positions always line up. */
+function stubScores(
+  turns: ReadonlyArray<TranscriptTurn>,
+  narrative: string,
+): StructuredReport {
+  return {
+    turns: turns.map((turn, index) => {
+      const pillar = (offset: number) => ({
+        score: ((index + offset) % 4) + 1,
+        evidence: `Stubbed evidence for question ${turn.position}.`,
+      });
+      return {
+        position: turn.position,
+        situation: pillar(0),
+        task: pillar(1),
+        action: pillar(2),
+        result: pillar(3),
+        learning: pillar(1),
+        strength: `Stubbed strength for question ${turn.position}.`,
+        improvement: `Stubbed improvement for question ${turn.position}.`,
+      };
+    }),
+    headline: "Stubbed headline.",
+    narrative,
+  };
 }
 
 export type StubReportGenerator = ReturnType<typeof createStubReportGenerator>;

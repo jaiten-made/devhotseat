@@ -1,10 +1,14 @@
 import { GoogleGenAI } from "@google/genai";
+import type { StructuredReport } from "../../lib/report/schema";
 import { REPORT_MODEL } from "./model";
 import { parseReportResponse } from "./parse";
 import { buildPrompt, loadPromptTemplate, type TranscriptTurn } from "./prompt";
+import { REPORT_JSON_SCHEMA } from "./response-schema";
 
 export interface GeneratedReport {
   readonly content: string;
+  /** The scored rubric, or null when only the prose came back usable. */
+  readonly structured: StructuredReport | null;
   /** The model that produced this text, stored alongside the report. */
   readonly model: string;
 }
@@ -56,8 +60,24 @@ export function createGeminiReportGenerator(
       const response = await client.models.generateContent({
         model,
         contents: buildPrompt(template, turns),
+        config: {
+          // Required whenever a schema is set.
+          responseMimeType: "application/json",
+          responseJsonSchema: REPORT_JSON_SCHEMA,
+          // Scoring the same transcript twice should not swing a band.
+          temperature: 0.3,
+          // A five-turn report runs to roughly 1200 tokens; this is headroom.
+          // Running out truncates the JSON, which costs the whole report.
+          maxOutputTokens: 4096,
+        },
       });
-      return { content: parseReportResponse(response), model };
+      return {
+        ...parseReportResponse(
+          response,
+          turns.map((turn) => turn.position),
+        ),
+        model,
+      };
     },
   };
 }

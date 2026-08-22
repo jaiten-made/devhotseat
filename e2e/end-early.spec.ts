@@ -56,6 +56,10 @@ test("leaving part way through ends the interview and reports on what was answer
   await expect(
     page.getByText("This is a stubbed feedback report"),
   ).toBeVisible();
+  // One answer, so exactly one scored card — the unasked questions are in the
+  // transcript but were never sent to be marked.
+  await expect(page.getByText("Why these scores")).toHaveCount(1);
+  await expect(page.getByText("1 answer scored")).toBeVisible();
 
   // And nothing is left running.
   await page.getByRole("link", { name: "Sessions" }).click();

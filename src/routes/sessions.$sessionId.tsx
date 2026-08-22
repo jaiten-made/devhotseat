@@ -25,6 +25,7 @@ import {
   TranscriptPanel,
   TurnBar,
 } from "@/components/interview";
+import { ReportView } from "@/components/report";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -756,7 +757,7 @@ function TypedTurn({
   );
 }
 
-/** Milestone 8: the full Q&A exchange, and the report if one was written. */
+/** Milestone 8: the report if one was written, and the full Q&A exchange. */
 function Transcript({ session }: { session: SessionDetail }) {
   return (
     <section>
@@ -765,7 +766,27 @@ function Transcript({ session }: { session: SessionDetail }) {
         {new Date(session.startedAt).toLocaleString()}
       </p>
 
-      <ol className="mb-10 space-y-6">
+      {/*
+        The feedback leads. The answers are already known to whoever gave them,
+        so scrolling past all of them to reach the verdict buries the one thing
+        they came back for.
+      */}
+      <h2 className="mb-3 text-xl font-semibold tracking-tight">Feedback</h2>
+      {session.report ? (
+        <ReportView report={session.report} turns={session.turns} />
+      ) : (
+        // A missing report is a degraded state, not an error: the amber tint
+        // says something is absent without claiming anything went wrong.
+        <p className="rounded-lg border border-dashed border-warning/50 bg-warning/5 p-6">
+          No report was written for this session. The transcript below is still
+          complete.
+        </p>
+      )}
+
+      <h2 className="mt-10 mb-3 text-xl font-semibold tracking-tight">
+        The full exchange
+      </h2>
+      <ol className="space-y-6">
         {session.turns.map((turn) => (
           <li key={turn.position} className="rounded-lg border p-4">
             <p className="mb-2 font-medium">
@@ -777,20 +798,6 @@ function Transcript({ session }: { session: SessionDetail }) {
           </li>
         ))}
       </ol>
-
-      <h2 className="mb-3 text-xl font-semibold tracking-tight">Feedback</h2>
-      {session.report ? (
-        <article className="whitespace-pre-wrap rounded-lg border bg-card p-5 leading-relaxed">
-          {session.report.content}
-        </article>
-      ) : (
-        // A missing report is a degraded state, not an error: the amber tint
-        // says something is absent without claiming anything went wrong.
-        <p className="rounded-lg border border-dashed border-warning/50 bg-warning/5 p-6">
-          No report was written for this session. The transcript above is still
-          complete.
-        </p>
-      )}
     </section>
   );
 }

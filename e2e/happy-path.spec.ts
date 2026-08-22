@@ -81,6 +81,24 @@ test("add questions, run a session, read the transcript and report", async ({
     page.getByText("This is a stubbed feedback report"),
   ).toBeVisible();
 
+  // The scored report: a verdict, the radar, and one card per answer.
+  await expect(page.getByText("Overall")).toBeVisible();
+  await expect(page.getByText("/ 4", { exact: true })).toBeVisible();
+  await expect(page.getByRole("img", { name: /STAR-L scores/ })).toBeVisible();
+  await expect(page.getByText("55% of the score")).toBeVisible();
+  await expect(page.getByText("Why these scores")).toHaveCount(5);
+  await expect(
+    page.getByText("Stubbed strength for question 3."),
+  ).toBeVisible();
+
+  // The evidence is behind a disclosure, so it is hidden until asked for.
+  const evidence = page
+    .getByText("Stubbed action evidence for question 1.")
+    .first();
+  await expect(evidence).toBeHidden();
+  await page.getByText("Why these scores").first().click();
+  await expect(evidence).toBeVisible();
+
   await page.getByRole("link", { name: "Sessions" }).click();
   await expect(page.getByText("Report ready")).toBeVisible();
 });

@@ -23,6 +23,7 @@ beforeEach(async () => {
   await h.truncate();
   h.reports.mode = "success";
   h.reports.calls.length = 0;
+  h.reports.structured = null;
 });
 
 async function seedBank(count: number): Promise<void> {
@@ -211,6 +212,7 @@ describe("ending early", () => {
     const [passed] = h.reports.calls;
     expect(passed).toHaveLength(1);
     expect(passed?.map((t) => t.answerText)).toEqual(["Answer 1"]);
+    expect(passed?.map((t) => t.position)).toEqual([1]);
   });
 
   it("ends a session with no answers, and writes no report", async () => {
@@ -301,6 +303,61 @@ describe("the transcript and report", () => {
     expect(row?.content).toBe("Stubbed feedback report.");
   });
 
+  it("round-trips the scored rubric through the jsonb column", async () => {
+    await seedBank(N);
+    const id = await start();
+    for (let i = 1; i <= N; i++) await answer(id, `Answer ${i}`);
+
+    const detail = await getSessionDetail(h.db, id);
+    const structured = detail?.report?.structured;
+    expect(structured?.turns).toHaveLength(N);
+    expect(structured?.turns.map((t) => t.position)).toEqual([1, 2, 3]);
+    // Scores survive as numbers, not as the strings JSON round-trips can leave.
+    for (const turn of structured?.turns ?? []) {
+      expect(typeof turn.action.score).toBe("number");
+      expect(turn.action.score).toBeGreaterThanOrEqual(1);
+      expect(turn.action.score).toBeLessThanOrEqual(4);
+    }
+    expect(structured?.headline).toBe("Stubbed headline.");
+  });
+
+  it("writes a prose-only report when the rubric did not survive", async () => {
+    await seedBank(N);
+    h.reports.mode = "prose_only";
+    const id = await start();
+    for (let i = 1; i <= N; i++) await answer(id, `Answer ${i}`);
+
+    const detail = await getSessionDetail(h.db, id);
+    // Prose alone is still a report: the session completed and the row exists.
+    expect(detail?.endedAt).not.toBeNull();
+    expect(detail?.report?.content).toBe("Stubbed feedback report.");
+    expect(detail?.report?.structured).toBeNull();
+
+    const [row] = await h.db
+      .select()
+      .from(reports)
+      .where(eq(reports.sessionId, id));
+    expect(row?.structured).toBeNull();
+  });
+
+  // Drizzle's $type<>() is an assertion, not a check. A row that predates the
+  // current shape must degrade to prose rather than break the page.
+  it("degrades a stored rubric it cannot validate back to prose", async () => {
+    await seedBank(N);
+    h.reports.mode = "prose_only";
+    const id = await start();
+    for (let i = 1; i <= N; i++) await answer(id, `Answer ${i}`);
+
+    await h.db
+      .update(reports)
+      .set({ structured: { turns: "nope" } as never })
+      .where(eq(reports.sessionId, id));
+
+    const detail = await getSessionDetail(h.db, id);
+    expect(detail?.report?.structured).toBeNull();
+    expect(detail?.report?.content).toBe("Stubbed feedback report.");
+  });
+
   it("hands the full transcript to the generator", async () => {
     await seedBank(N);
     const id = await start();
@@ -313,6 +370,9 @@ describe("the transcript and report", () => {
       "Answer 2",
       "Answer 3",
     ]);
+    // The position travels with each turn so the scores can be joined back to
+    // the questions they were given for.
+    expect(passed?.map((t) => t.position)).toEqual([1, 2, 3]);
   });
 
   it("still saves the session and transcript when generation fails", async () => {

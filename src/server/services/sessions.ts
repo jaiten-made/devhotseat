@@ -1,4 +1,8 @@
 import { and, asc, count, desc, eq, isNotNull, lte, sql } from "drizzle-orm";
+import {
+  type StructuredReport,
+  structuredReportSchema,
+} from "../../lib/report/schema";
 import type { ReportGenerator } from "../ai/client";
 import { type Database, questions, reports, sessions, turns } from "../db";
 import {
@@ -26,6 +30,8 @@ export interface SessionDetail {
   readonly turns: ReadonlyArray<SessionTurn>;
   readonly report: {
     readonly content: string;
+    /** The scored rubric, or null for a report that is prose only. */
+    readonly structured: StructuredReport | null;
     readonly model: string;
     readonly createdAt: Date;
   } | null;
@@ -197,6 +203,7 @@ async function finishSession(
 ): Promise<void> {
   const rows = await db
     .select({
+      position: turns.position,
       questionText: turns.questionText,
       answerText: turns.answerText,
     })
@@ -204,11 +211,16 @@ async function finishSession(
     .where(and(eq(turns.sessionId, sessionId), isNotNull(turns.answerText)))
     .orderBy(asc(turns.position));
 
-  let generated: { content: string; model: string } | null = null;
+  let generated: {
+    content: string;
+    structured: StructuredReport | null;
+    model: string;
+  } | null = null;
   if (rows.length > 0) {
     try {
       generated = await generator.generate(
         rows.map((row) => ({
+          position: row.position,
           questionText: row.questionText,
           answerText: row.answerText ?? "",
         })),
@@ -237,6 +249,7 @@ async function finishSession(
       await tx.insert(reports).values({
         sessionId,
         content: generated.content,
+        structured: generated.structured,
         model: generated.model,
       });
     }
@@ -285,6 +298,7 @@ export async function getSessionDetail(
   const [report] = await db
     .select({
       content: reports.content,
+      structured: reports.structured,
       model: reports.model,
       createdAt: reports.createdAt,
     })
@@ -299,8 +313,22 @@ export async function getSessionDetail(
     startedAt: session.startedAt,
     endedAt: session.endedAt,
     turns: visibleTurns,
-    report: report ?? null,
+    report: report
+      ? { ...report, structured: validateStructured(report.structured) }
+      : null,
   };
+}
+
+/**
+ * Re-checks the stored rubric on the way out. Drizzle's `$type<>()` is only an
+ * assertion — nothing validates what is already in the column — so a row
+ * written by hand, or under an older shape, would otherwise reach the renderer
+ * and break the page. Degrading to prose is the same path a prose-only report
+ * already takes.
+ */
+function validateStructured(value: unknown): StructuredReport | null {
+  if (value === null || value === undefined) return null;
+  return structuredReportSchema.safeParse(value).data ?? null;
 }
 
 export async function listSessions(db: Database) {

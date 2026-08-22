@@ -15,6 +15,13 @@
       "when": 1787322368175,
       "tag": "0001_redundant_goblin_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787404657867,
+      "tag": "0002_nappy_roulette",
+      "breakpoints": true
     }
   ]
 }

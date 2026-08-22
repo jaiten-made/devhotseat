@@ -41,9 +41,10 @@ Practice an interview, then review how it went. Four parts, one journey:
 4. **Feedback report.** When a session ends the AI produces a written report on
    my answers, saved alongside the transcript and viewable in the UI.
 
-Feedback quality is explicitly v1-shallow. One prompt, prose out. No rubrics, no
-per-answer scoring, no comparison against previous sessions. The point is that
-the pipe exists and persists.
+Feedback is scored. One prompt returns a STAR-L rubric — Situation, Task,
+Action, Result, Learning, each 1 to 4 on every answered turn — plus a weighted
+session score and a short coaching narrative. Still no comparison against
+previous sessions. See ADR 0025.
 
 Input is spoken, transcribed by the browser. Typing is kept as an equal
 alternative: it is the fallback when speech is unsupported or the microphone is
@@ -72,8 +73,7 @@ Do not build, do not scaffold for:
 * Optimistic updates. Invalidate and refetch is fine at this scale.
 * Auth / users / multi-tenancy
 * Cloud deployment, Docker registries, CI/CD pipelines
-* Scoring, grading, rubrics, numeric ratings
-* Analytics, progress tracking, trends across sessions
+* Analytics, progress tracking, trends or score comparison across sessions
 * Editing a session, or changing what one asked after the fact
 * Payments, email, notifications
 
@@ -161,6 +161,12 @@ app code depends on it and it is not part of the runtime.
   effect bolted on after.
 * The prompt lives in its own file (`src/server/ai/prompt.md`) so I can iterate
   on it without touching code.
+* The model returns JSON, constrained by a schema derived from the same zod
+  contract that validates the reply (`src/lib/report/schema.ts`).
+* A report whose rubric does not validate but whose prose does is saved as
+  prose only. Three states have to render: scored, prose only, and no report.
+* The pillar weights live in `src/lib/report/rubric.ts` and are the only place
+  they are written down. The prompt renders them from there.
 
 ## Deleting a session
 
