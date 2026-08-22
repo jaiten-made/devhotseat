@@ -11,7 +11,7 @@ no auth, no multi-tenancy and no hosted deployment: it runs locally.
 | ---- | ------- |
 | Node | 24.19.0 (see `.nvmrc`) |
 | pnpm | 11.22.0 (pinned via `packageManager`, provided by Corepack) |
-| PostgreSQL | 18.6, listening on 5432 |
+| PostgreSQL | 16+, listening on 5432 |
 | Browser | Google Chrome. Speech recognition is a hosted service that Brave and some other Chromium builds ship without. |
 
 ```bash
@@ -32,11 +32,11 @@ Create the database role and both databases:
 
 ```bash
 # 1. Install and start PostgreSQL
-brew install postgresql@17
-brew services start postgresql@17
+brew install postgresql@16
+brew services start postgresql@16
 
 # 2. Ensure psql is available in PATH
-export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
+export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"
 
 # 3. Create role and databases
 psql postgres -c "CREATE ROLE devhotseat LOGIN PASSWORD 'devhotseat' SUPERUSER;"
