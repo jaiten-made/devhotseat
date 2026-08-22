@@ -32,11 +32,11 @@ Create the database role and both databases:
 
 ```bash
 # 1. Install and start PostgreSQL
-brew install postgresql@18
-brew services start postgresql@18
+brew install postgresql@17
+brew services start postgresql@17
 
 # 2. Ensure psql is available in PATH
-export PATH="/opt/homebrew/opt/postgresql@18/bin:$PATH"
+export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
 
 # 3. Create role and databases
 psql postgres -c "CREATE ROLE devhotseat LOGIN PASSWORD 'devhotseat' SUPERUSER;"
