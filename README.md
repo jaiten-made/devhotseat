@@ -28,8 +28,32 @@ pnpm install
 
 Create the database role and both databases:
 
+### macOS (Homebrew)
+
 ```bash
-sudo systemctl enable --now postgresql@18-main && sudo -u postgres psql -p 5432 -c "CREATE ROLE devhotseat LOGIN PASSWORD 'devhotseat'" && sudo -u postgres createdb -p 5432 -O devhotseat devhotseat && sudo -u postgres createdb -p 5432 -O devhotseat devhotseat_test
+# 1. Install and start PostgreSQL
+brew install postgresql@18
+brew services start postgresql@18
+
+# 2. Ensure psql is available in PATH
+export PATH="/opt/homebrew/opt/postgresql@18/bin:$PATH"
+
+# 3. Create role and databases
+psql postgres -c "CREATE ROLE devhotseat LOGIN PASSWORD 'devhotseat' SUPERUSER;"
+psql postgres -c "CREATE DATABASE devhotseat OWNER devhotseat;"
+psql postgres -c "CREATE DATABASE devhotseat_test OWNER devhotseat;"
+```
+
+### Linux (Debian / Ubuntu)
+
+```bash
+# 1. Start PostgreSQL service
+sudo systemctl enable --now postgresql@18-main
+
+# 2. Create role and databases
+sudo -u postgres psql -p 5432 -c "CREATE ROLE devhotseat LOGIN PASSWORD 'devhotseat';"
+sudo -u postgres createdb -p 5432 -O devhotseat devhotseat
+sudo -u postgres createdb -p 5432 -O devhotseat devhotseat_test
 ```
 
 Copy the environment template. Adjust the connection strings if you changed
