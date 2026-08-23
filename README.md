@@ -6,6 +6,17 @@ and an AI-written feedback report afterwards. There is no auth, no
 multi-tenancy and no hosted deployment: you start it yourself, and it reaches
 out to Google to transcribe your answers and write the report.
 
+![The interview room mid-answer, the spoken answer being transcribed under the question, with the answers so far beside it](docs/screenshots/interview-room.png)
+
+A session runs as a call: one question read aloud, your spoken answer
+transcribed, then the turn handed back.
+
+![A finished session's report: leaning hire, 2.9 out of 4, broken down by STAR-L pillar](docs/screenshots/feedback-report.png)
+
+Afterwards it scores what you said against the STAR-L rubric, pillar by pillar,
+and writes up where the answers were thin — down to a card per answer, which
+[the whole report](docs/screenshots/feedback-report-full.png) shows.
+
 ## Prerequisites
 
 | Tool | Version |
@@ -103,7 +114,7 @@ report from **Sessions**. A session asks every question in the bank, in random
 order, reading each one aloud and transcribing your spoken answer. It runs as a
 call screen: entering it reads nothing out until you press to begin, after
 which the bar across the bottom is pressed once to start talking and again to
-hand your answer back, and the avatar in the middle is green only while the
+hand your answer back, and the avatar in the middle is filled in only while the
 microphone is actually open. You can press to talk over a question
 that is still being read, which stops it. Replaying the question and showing
 the answers so far sit under the bar.
@@ -165,6 +176,7 @@ pnpm lint
 | `migrations` | Generated SQL migrations |
 | `e2e` | Playwright specs |
 | `docker` | Postgres init script run by `compose.yaml` |
+| `scripts` | Developer scripts — the screenshots above are captured by one |
 | `docs/adr` | Decision records |
 
 ## Decisions
