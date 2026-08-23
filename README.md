@@ -162,3 +162,7 @@ pnpm lint
 ## Decisions
 
 The reasoning behind each technical choice lives in [`docs/adr/`](docs/adr/).
+
+## License
+
+[MIT](LICENSE).
