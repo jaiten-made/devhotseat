@@ -47,28 +47,32 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body>
         <QueryClientProvider client={router.options.context.queryClient}>
-          <div className="mx-auto max-w-3xl px-6 py-10">
-            <header className="mb-10 flex items-baseline gap-6 border-b pb-4">
-              <Link to="/" className="font-semibold tracking-tight">
-                devhotseat
+          {/*
+            The bar is sticky because the two list screens grow without bound —
+            a bank of forty questions should not strand you at the bottom of it
+            with no way back to the sessions.
+          */}
+          <header className="sticky top-0 z-40 border-b border-rule bg-paper/85 backdrop-blur">
+            <div className="mx-auto flex h-14 max-w-3xl items-stretch gap-8 px-6">
+              <Link
+                to="/"
+                className="flex items-center text-[0.9375rem] font-semibold tracking-tight"
+              >
+                {/* The tool is named for the seat, not the dev in it. */}
+                <span className="text-ink-faint">dev</span>
+                <span>hotseat</span>
               </Link>
-              <nav className="flex gap-4 text-sm text-muted-foreground">
-                <Link
-                  to="/"
-                  className="hover:text-foreground [&.active]:text-foreground"
-                >
+              <nav className="flex items-stretch gap-6">
+                <NavLink to="/" exact>
                   Questions
-                </Link>
-                <Link
-                  to="/sessions"
-                  className="hover:text-foreground [&.active]:text-foreground"
-                >
-                  Sessions
-                </Link>
+                </NavLink>
+                <NavLink to="/sessions">Sessions</NavLink>
               </nav>
-            </header>
-            {children}
-          </div>
+            </div>
+          </header>
+
+          <main className="mx-auto max-w-3xl px-6 pb-24 pt-10">{children}</main>
+
           <Suspense>
             <Devtools buttonPosition="bottom-right" />
           </Suspense>
@@ -76,5 +80,34 @@ function RootDocument({ children }: { children: ReactNode }) {
         <Scripts />
       </body>
     </html>
+  );
+}
+
+/**
+ * Set in the data face, like every other label in the app that names a thing
+ * rather than saying something. The active tab is marked by a rule sitting on
+ * the bar's own bottom border, so the highlight belongs to the chrome rather
+ * than tinting the word.
+ *
+ * `exact` is needed on the root link: without it "/" prefix-matches every
+ * route, and both tabs light up at once.
+ */
+function NavLink({
+  to,
+  exact = false,
+  children,
+}: {
+  to: string;
+  exact?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      to={to}
+      activeOptions={{ exact }}
+      className="field-label relative flex items-center transition-colors hover:text-ink [&.active]:text-ink after:absolute after:inset-x-0 after:-bottom-px after:h-px after:bg-ink after:opacity-0 [&.active]:after:opacity-100"
+    >
+      {children}
+    </Link>
   );
 }

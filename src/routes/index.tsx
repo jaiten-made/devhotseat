@@ -15,6 +15,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  EmptyState,
+  Notice,
+  Page,
+  PageHeader,
+  Panel,
+  Row,
+  RowList,
+} from "@/components/ui/page";
 import { createQuestion, removeQuestion } from "@/fn/questions";
 import { startSession } from "@/fn/sessions";
 import { questionsQuery } from "@/lib/queries";
@@ -23,6 +32,13 @@ import { queryKeys } from "@/lib/query-keys";
 export const Route = createFileRoute("/")({
   component: QuestionBank,
 });
+
+/** The eyebrow is the screen's one number, so the header states the size of
+ *  the bank without a row of it having to be counted. */
+function bankEyebrow(count: number): string {
+  if (count === 0) return "Nothing in the bank";
+  return `${count} ${count === 1 ? "question" : "questions"} in the bank`;
+}
 
 function QuestionBank() {
   const queryClient = useQueryClient();
@@ -59,14 +75,36 @@ function QuestionBank() {
     },
   });
 
+  // The header is rendered in every branch, so the screen does not rebuild
+  // itself around the content once the query lands.
+  const header = (
+    <PageHeader
+      eyebrow={
+        questions.isSuccess
+          ? bankEyebrow(questions.data.length)
+          : "Question set"
+      }
+      title="Question bank"
+      description="A session asks every question here, in random order. Add as many as you like."
+    />
+  );
+
   if (questions.isPending) {
-    return <p className="text-muted-foreground">Loading questions…</p>;
+    return (
+      <Page>
+        {header}
+        <Notice>Loading questions…</Notice>
+      </Page>
+    );
   }
   if (questions.isError) {
     return (
-      <p className="text-destructive">
-        Could not load the question bank: {questions.error.message}
-      </p>
+      <Page>
+        {header}
+        <Notice tone="destructive" role="alert">
+          Could not load the question bank: {questions.error.message}
+        </Notice>
+      </Page>
     );
   }
 
@@ -76,105 +114,114 @@ function QuestionBank() {
   const upcomingLength = bank.length;
 
   return (
-    <section>
-      <h1 className="mb-1 text-2xl font-semibold tracking-tight">
-        Question bank
-      </h1>
-      <p className="mb-6 text-sm text-muted-foreground">
-        A session asks every question here, in random order. Add as many as you
-        like.
-      </p>
+    <Page>
+      {header}
 
-      <form
-        className="mb-8 flex gap-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (text.trim() !== "") add.mutate(text);
-        }}
-      >
-        <Input
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          placeholder="Add an interview question…"
-          aria-label="New question"
-        />
-        <Button type="submit" disabled={text.trim() === "" || add.isPending}>
-          Add
-        </Button>
-      </form>
+      <section className="space-y-4">
+        <form
+          className="flex gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (text.trim() !== "") add.mutate(text);
+          }}
+        >
+          <Input
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            placeholder="Add an interview question…"
+            aria-label="New question"
+          />
+          <Button
+            type="submit"
+            variant="outline"
+            disabled={text.trim() === "" || add.isPending}
+          >
+            Add
+          </Button>
+        </form>
 
-      {add.isError && (
-        <p className="mb-4 text-sm text-destructive">
-          Could not add that question: {add.error.message}
-        </p>
-      )}
+        {add.isError && (
+          <Notice tone="destructive" role="alert">
+            Could not add that question: {add.error.message}
+          </Notice>
+        )}
 
-      {bank.length === 0 ? (
-        <p className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-          No questions yet. Add your first one above.
-        </p>
-      ) : (
-        <ul className="divide-y rounded-lg border">
-          {bank.map((question) => (
-            <li key={question.id} className="flex items-center gap-3 px-4 py-3">
-              <span className="flex-1">{question.text}</span>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    aria-label={`Delete question: ${question.text}`}
-                    disabled={remove.isPending}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete this question?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      “{question.text}” will be removed from the bank. Past
-                      transcripts keep their own copy of the wording, so this
-                      does not change any session you have already run.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      variant="destructive"
-                      onClick={() => remove.mutate(question.id)}
+        {bank.length === 0 ? (
+          <EmptyState>No questions yet. Add your first one above.</EmptyState>
+        ) : (
+          /* No position markers: the bank is a set, asked in a random order
+             every session, so numbering the rows would assert an order that
+             does not exist. */
+          <RowList>
+            {bank.map((question) => (
+              <Row
+                key={question.id}
+                className="group gap-3 px-4 py-3 transition-colors hover:bg-sunk"
+              >
+                <span className="flex-1 leading-snug">{question.text}</span>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-ink-faint hover:bg-destructive/10 hover:text-destructive focus-visible:text-destructive"
+                      aria-label={`Delete question: ${question.text}`}
+                      disabled={remove.isPending}
                     >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </li>
-          ))}
-        </ul>
-      )}
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete this question?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        “{question.text}” will be removed from the bank. Past
+                        transcripts keep their own copy of the wording, so this
+                        does not change any session you have already run.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        onClick={() => remove.mutate(question.id)}
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </Row>
+            ))}
+          </RowList>
+        )}
+      </section>
 
-      <div className="mt-8 border-t pt-6">
-        {canStart ? (
-          <>
-            <Button onClick={() => begin.mutate()} disabled={begin.isPending}>
-              {begin.isPending ? "Starting…" : "Start a session"}
-            </Button>
-            <p className="mt-2 text-sm text-muted-foreground">
+      {/*
+        The one filled control on the screen, in a sheet of its own. Adding a
+        question is incidental beside starting the session the questions are
+        for, so "Add" is outlined and this is not.
+      */}
+      <Panel className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-ink-muted">
+          {canStart ? (
+            <>
               This session will ask {upcomingLength}{" "}
               {upcomingLength === 1 ? "question" : "questions"}.
-            </p>
-          </>
-        ) : (
-          <>
-            <Button disabled>Start a session</Button>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Add at least one question to start a session.
-            </p>
-          </>
-        )}
-      </div>
-    </section>
+            </>
+          ) : (
+            "Add at least one question to start a session."
+          )}
+        </p>
+        <Button
+          size="lg"
+          className="shrink-0"
+          onClick={() => begin.mutate()}
+          disabled={!canStart || begin.isPending}
+        >
+          {begin.isPending ? "Starting…" : "Start a session"}
+        </Button>
+      </Panel>
+    </Page>
   );
 }

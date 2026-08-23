@@ -65,12 +65,13 @@ test("a session whose report is missing still shows its transcript", async ({
   await expect(page.getByText("Seeded answer two.")).toBeVisible();
 
   // A missing report is a valid state, not a failure. The amber tint carries
-  // that meaning, so it is asserted rather than left to the eye.
+  // that meaning, so it is asserted rather than left to the eye. This is the
+  // computed form of `border-warning/30`, so it moves when `--warning` does.
   const notice = page.getByText("No report was written for this session");
   await expect(notice).toBeVisible();
   await expect(notice).toHaveCSS(
     "border-top-color",
-    "oklab(0.52 0.0410424 0.112763 / 0.5)",
+    "oklab(0.51 0.0307818 0.0845723 / 0.3)",
   );
 });
 

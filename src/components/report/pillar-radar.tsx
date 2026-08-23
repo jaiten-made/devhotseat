@@ -37,7 +37,7 @@ export function PillarRadar({ averages, verdict }: PillarRadarProps) {
       */}
       <svg
         viewBox="-24 -6 288 216"
-        className="h-auto w-full max-w-[280px]"
+        className="h-auto w-full max-w-[260px]"
         role="img"
         aria-labelledby="radar-title"
       >
@@ -49,7 +49,7 @@ export function PillarRadar({ averages, verdict }: PillarRadarProps) {
           <polygon
             key={level}
             points={ringPoints(level, RADIUS, CX, CY, count)}
-            className="fill-none stroke-border"
+            className="fill-none stroke-rule"
             strokeWidth={1}
           />
         ))}
@@ -63,7 +63,7 @@ export function PillarRadar({ averages, verdict }: PillarRadarProps) {
               y1={CY}
               x2={outer.x}
               y2={outer.y}
-              className="stroke-border"
+              className="stroke-rule"
               strokeWidth={1}
             />
           );
@@ -106,7 +106,7 @@ export function PillarRadar({ averages, verdict }: PillarRadarProps) {
               y={point.y}
               textAnchor={labelAnchor(point, CX)}
               dominantBaseline="middle"
-              className="fill-muted-foreground text-[10px]"
+              className="fill-ink-faint font-mono text-[9px] uppercase tracking-wide"
             >
               {pillar.label}
             </text>

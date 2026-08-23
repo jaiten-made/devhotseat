@@ -38,6 +38,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Marker,
+  Notice,
+  Page,
+  PageHeader,
+  Panel,
+  Section,
+} from "@/components/ui/page";
 import { Textarea } from "@/components/ui/textarea";
 import { answerTurn, leaveSession } from "@/fn/sessions";
 import { sessionQuery } from "@/lib/queries";
@@ -69,25 +77,41 @@ function SessionView() {
   const { sessionId } = Route.useParams();
   const session = useQuery(sessionQuery(sessionId));
 
+  // Every branch keeps the same header, so the screen does not rebuild itself
+  // around the content once the query lands.
   if (session.isPending) {
-    return <p className="text-muted-foreground">Loading session…</p>;
+    return (
+      <Page>
+        <PageHeader eyebrow="Loading" title="Session" />
+        <Notice>Loading session…</Notice>
+      </Page>
+    );
   }
   if (session.isError) {
     return (
-      <p className="text-destructive">
-        Could not load this session: {session.error.message}
-      </p>
+      <Page>
+        <PageHeader eyebrow="Unavailable" title="Session" />
+        <Notice tone="destructive" role="alert">
+          Could not load this session: {session.error.message}
+        </Notice>
+      </Page>
     );
   }
   if (session.data === null) {
     return (
-      <p className="text-muted-foreground">
-        That session does not exist.{" "}
-        <Link to="/sessions" className="underline">
-          Back to sessions
-        </Link>
-        .
-      </p>
+      <Page>
+        <PageHeader eyebrow="Not found" title="Session" />
+        <Notice>
+          That session does not exist.{" "}
+          <Link
+            to="/sessions"
+            className="font-medium text-ink underline underline-offset-4"
+          >
+            Back to sessions
+          </Link>
+          .
+        </Notice>
+      </Page>
     );
   }
 
@@ -179,16 +203,21 @@ function Room({
 
   return (
     // A row, so the transcript stands beside the room rather than under it.
-    <div className="fixed inset-0 z-50 flex bg-background">
+    <div className="fixed inset-0 z-50 flex bg-paper">
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex shrink-0 items-center gap-3 border-b px-4 py-3">
+        {/*
+          The same eyebrow-over-title the app's other screens lead with. The
+          room covers the nav, so this header is the only thing left saying
+          where you are — which is exactly the job the eyebrow does elsewhere.
+        */}
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-rule px-4">
           <div className="min-w-0 flex-1">
-            <p className="truncate font-semibold leading-tight">
-              Interview session
-            </p>
-            <p className="truncate text-sm text-muted-foreground">
+            <p className="field-label truncate">
               {subtitle ??
                 `Question ${session.currentPosition} of ${session.questionCount}`}
+            </p>
+            <p className="mt-1 truncate text-sm font-semibold leading-none">
+              Interview session
             </p>
           </div>
           <EndInterview
@@ -201,17 +230,19 @@ function Room({
         {end.isError && (
           <p
             role="alert"
-            className="shrink-0 border-b bg-destructive/5 px-4 py-2 text-center text-sm text-destructive"
+            className="shrink-0 border-b border-destructive/25 bg-destructive/5 px-4 py-2 text-center text-sm text-destructive"
           >
             {end.error.message} The interview is still running.
           </p>
         )}
 
-        <main className="flex flex-1 flex-col items-center justify-center gap-6 overflow-y-auto px-4 py-6">
+        <main className="flex flex-1 flex-col items-center justify-center gap-7 overflow-y-auto px-6 py-8">
           {children}
         </main>
 
-        <div className="flex shrink-0 flex-col items-center gap-3 border-t px-4 py-5">
+        {/* The control deck, set as a white sheet under the room's off-white
+            so the one thing you can press has a surface of its own. */}
+        <div className="flex shrink-0 flex-col items-center gap-3 border-t border-rule bg-sheet px-4 py-5">
           <TurnBar {...turn} />
           <div className="flex flex-wrap items-center justify-center gap-1">
             <Button
@@ -219,8 +250,8 @@ function Room({
               size="sm"
               onClick={() => setShowTranscript((open) => !open)}
               className={cn(
-                "text-muted-foreground",
-                showTranscript && "bg-accent text-accent-foreground",
+                "text-ink-muted hover:text-ink",
+                showTranscript && "bg-wash text-ink",
               )}
             >
               <FileText className="size-4" />
@@ -275,7 +306,7 @@ function EndInterview({
           variant="ghost"
           size="sm"
           disabled={pending}
-          className="shrink-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+          className="shrink-0 text-ink-muted hover:bg-destructive hover:text-destructive-foreground"
         >
           <PhoneOff className="size-4" />
           {pending ? "Ending…" : "End interview"}
@@ -330,7 +361,9 @@ function Stage({
   return (
     <>
       <Orb listening={listening} />
-      <h1 className="max-w-xl text-balance text-center text-xl font-semibold tracking-tight">
+      {/* The loudest thing on any screen in this app, by design: it is the
+          only sentence you are meant to be answering from memory. */}
+      <h1 className="max-w-2xl text-balance text-center text-2xl font-semibold leading-snug tracking-tight md:text-[1.75rem]">
         {currentQuestion(session)}
       </h1>
       {children}
@@ -552,7 +585,7 @@ function VoiceTurn({
       variant="ghost"
       size="sm"
       onClick={onUseTyping}
-      className="text-muted-foreground"
+      className="text-ink-muted hover:text-ink"
     >
       <Keyboard className="size-4" />
       Type
@@ -627,7 +660,7 @@ function VoiceTurn({
             size="sm"
             onClick={readAgain}
             disabled={submit.isPending}
-            className="text-muted-foreground"
+            className="text-ink-muted hover:text-ink"
           >
             <Volume2 className="size-4" />
             Read again
@@ -637,23 +670,23 @@ function VoiceTurn({
       }
     >
       <Stage session={session} listening={listening}>
-        {/* Live captions: committed words plain, words still in flight italic. */}
+        {/* Live captions: committed words plain, words still in flight italic.
+            Set on a sheet, because this is your answer being written down —
+            and a fixed surface keeps the stage from jumping as words land. */}
         {canSubmit(voice) && (
-          <p className="max-w-lg text-center text-sm">
+          <p className="w-full max-w-lg rounded-lg border border-rule bg-sheet px-4 py-3.5 text-center text-sm leading-relaxed">
             {hasWords ? (
               <>
-                <span className="text-foreground/70">
-                  {recognition.finalTranscript}
-                </span>
+                <span className="text-ink">{recognition.finalTranscript}</span>
                 {recognition.interimTranscript && (
-                  <span className="italic text-muted-foreground">
+                  <span className="italic text-ink-faint">
                     {" "}
                     {recognition.interimTranscript}
                   </span>
                 )}
               </>
             ) : (
-              <span className="italic text-muted-foreground">
+              <span className="italic text-ink-faint">
                 Your answer appears here as you speak.
               </span>
             )}
@@ -661,12 +694,12 @@ function VoiceTurn({
         )}
 
         {fault && (
-          <p className="max-w-sm text-center text-sm text-destructive">
+          <p className="max-w-sm text-center text-sm leading-relaxed text-destructive">
             {describeSpeechError(fault)}
           </p>
         )}
         {submit.isError && (
-          <p className="max-w-sm text-center text-sm text-destructive">
+          <p className="max-w-sm text-center text-sm leading-relaxed text-destructive">
             Could not save that answer: {submit.error.message}
           </p>
         )}
@@ -727,7 +760,7 @@ function TypedTurn({
             variant="ghost"
             size="sm"
             onClick={onUseVoice}
-            className="text-muted-foreground"
+            className="text-ink-muted hover:text-ink"
           >
             <Mic className="size-4" />
             Voice
@@ -745,10 +778,10 @@ function TypedTurn({
           placeholder="Type your answer…"
           aria-label="Your answer"
           rows={6}
-          className="max-w-lg"
+          className="w-full max-w-lg"
         />
         {submit.isError && (
-          <p className="max-w-sm text-center text-sm text-destructive">
+          <p className="max-w-sm text-center text-sm leading-relaxed text-destructive">
             Could not save that answer: {submit.error.message}
           </p>
         )}
@@ -760,44 +793,52 @@ function TypedTurn({
 /** Milestone 8: the report if one was written, and the full Q&A exchange. */
 function Transcript({ session }: { session: SessionDetail }) {
   return (
-    <section>
-      <h1 className="mb-1 text-2xl font-semibold tracking-tight">Transcript</h1>
-      <p className="mb-8 text-sm text-muted-foreground">
-        {new Date(session.startedAt).toLocaleString()}
-      </p>
+    <Page>
+      <PageHeader
+        eyebrow={new Date(session.startedAt).toLocaleString()}
+        title="Transcript"
+        description="Everything you were asked, everything you said, and the feedback written from it."
+      />
 
       {/*
         The feedback leads. The answers are already known to whoever gave them,
         so scrolling past all of them to reach the verdict buries the one thing
         they came back for.
       */}
-      <h2 className="mb-3 text-xl font-semibold tracking-tight">Feedback</h2>
-      {session.report ? (
-        <ReportView report={session.report} turns={session.turns} />
-      ) : (
-        // A missing report is a degraded state, not an error: the amber tint
-        // says something is absent without claiming anything went wrong.
-        <p className="rounded-lg border border-dashed border-warning/50 bg-warning/5 p-6">
-          No report was written for this session. The transcript below is still
-          complete.
-        </p>
-      )}
+      <Section title="Feedback">
+        {session.report ? (
+          <ReportView report={session.report} turns={session.turns} />
+        ) : (
+          // A missing report is a degraded state, not an error: the amber tint
+          // says something is absent without claiming anything went wrong.
+          <Notice tone="warning">
+            No report was written for this session. The transcript below is
+            still complete.
+          </Notice>
+        )}
+      </Section>
 
-      <h2 className="mt-10 mb-3 text-xl font-semibold tracking-tight">
-        The full exchange
-      </h2>
-      <ol className="space-y-6">
-        {session.turns.map((turn) => (
-          <li key={turn.position} className="rounded-lg border p-4">
-            <p className="mb-2 font-medium">
-              {turn.position}. {turn.questionText}
-            </p>
-            <p className="whitespace-pre-wrap text-muted-foreground">
-              {turn.answerText ?? "(not answered)"}
-            </p>
-          </li>
-        ))}
-      </ol>
-    </section>
+      <Section title="The full exchange">
+        {/* Numbered, because the turns are a sequence and the report above
+            refers back to them by position. */}
+        <ol className="space-y-3">
+          {session.turns.map((turn) => (
+            <li key={turn.position}>
+              <Panel className="p-5">
+                <div className="flex items-baseline gap-2.5">
+                  <Marker index={turn.position} total={session.questionCount} />
+                  <p className="min-w-0 flex-1 font-medium leading-snug">
+                    {turn.questionText}
+                  </p>
+                </div>
+                <p className="mt-3 border-l-2 border-rule pl-3.5 whitespace-pre-wrap leading-relaxed text-ink-muted">
+                  {turn.answerText ?? "(not answered)"}
+                </p>
+              </Panel>
+            </li>
+          ))}
+        </ol>
+      </Section>
+    </Page>
   );
 }

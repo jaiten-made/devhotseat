@@ -13,9 +13,18 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  EmptyState,
+  Notice,
+  Page,
+  PageHeader,
+  Row,
+  RowList,
+} from "@/components/ui/page";
 import { removeSession } from "@/fn/sessions";
 import { sessionsQuery } from "@/lib/queries";
 import { queryKeys } from "@/lib/query-keys";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/sessions/")({
   component: SessionList,
@@ -24,6 +33,11 @@ export const Route = createFileRoute("/sessions/")({
 type SessionRow = Awaited<
   ReturnType<typeof import("@/fn/sessions").fetchSessions>
 >[number];
+
+function listEyebrow(count: number): string {
+  if (count === 0) return "Nothing recorded";
+  return `${count} ${count === 1 ? "session" : "sessions"}`;
+}
 
 function SessionList() {
   const queryClient = useQueryClient();
@@ -37,66 +51,91 @@ function SessionList() {
       queryClient.invalidateQueries({ queryKey: queryKeys.sessions }),
   });
 
+  // Rendered in every branch, so a screen that is loading, broken or empty is
+  // still recognisably this screen.
+  const header = (
+    <PageHeader
+      eyebrow={
+        sessions.isSuccess ? listEyebrow(sessions.data.length) : "Session log"
+      }
+      title="Sessions"
+      description="Every interview you have practised, newest first. Open one to read its transcript and feedback."
+    />
+  );
+
   if (sessions.isPending) {
-    return <p className="text-muted-foreground">Loading sessions…</p>;
+    return (
+      <Page>
+        {header}
+        <Notice>Loading sessions…</Notice>
+      </Page>
+    );
   }
   if (sessions.isError) {
     return (
-      <p className="text-destructive">
-        Could not load sessions: {sessions.error.message}
-      </p>
-    );
-  }
-
-  if (sessions.data.length === 0) {
-    return (
-      <section>
-        <h1 className="mb-6 text-2xl font-semibold tracking-tight">Sessions</h1>
-        <p className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-          No sessions yet. Start one from the{" "}
-          <Link to="/" className="underline">
-            question bank
-          </Link>
-          .
-        </p>
-      </section>
+      <Page>
+        {header}
+        <Notice tone="destructive" role="alert">
+          Could not load sessions: {sessions.error.message}
+        </Notice>
+      </Page>
     );
   }
 
   return (
-    <section>
-      <h1 className="mb-6 text-2xl font-semibold tracking-tight">Sessions</h1>
+    <Page>
+      {header}
 
-      {remove.isError && (
-        <p className="mb-4 text-sm text-destructive">
-          Could not delete that session: {remove.error.message}
-        </p>
-      )}
+      <section className="space-y-4">
+        {remove.isError && (
+          <Notice tone="destructive" role="alert">
+            Could not delete that session: {remove.error.message}
+          </Notice>
+        )}
 
-      <ul className="divide-y rounded-lg border">
-        {sessions.data.map((session) => (
-          <li key={session.id} className="flex items-center">
-            {/* The row is the link, so the delete button sits outside it: a
-                button nested in an anchor is neither valid nor clickable. */}
+        {sessions.data.length === 0 ? (
+          <EmptyState>
+            No sessions yet. Start one from the{" "}
             <Link
-              to="/sessions/$sessionId"
-              params={{ sessionId: session.id }}
-              className="flex flex-1 items-center gap-4 px-4 py-3 hover:bg-accent"
+              to="/"
+              className="font-medium text-ink underline underline-offset-4"
             >
-              <span className="flex-1">
-                {new Date(session.startedAt).toLocaleString()}
-              </span>
-              <ReportState hasReport={session.hasReport} />
+              question bank
             </Link>
-            <DeleteSession
-              session={session}
-              onConfirm={() => remove.mutate(session.id)}
-              disabled={remove.isPending}
-            />
-          </li>
-        ))}
-      </ul>
-    </section>
+            .
+          </EmptyState>
+        ) : (
+          <RowList>
+            {sessions.data.map((session) => (
+              <Row
+                key={session.id}
+                className="group transition-colors hover:bg-sunk"
+              >
+                {/* The row is the link, so the delete button sits outside it: a
+                    button nested in an anchor is neither valid nor clickable. */}
+                <Link
+                  to="/sessions/$sessionId"
+                  params={{ sessionId: session.id }}
+                  className="flex flex-1 items-center gap-4 px-4 py-3.5"
+                >
+                  {/* Set in the data face so the column of timestamps lines up
+                      digit for digit down the list. */}
+                  <span className="flex-1 font-mono text-sm tabular-nums">
+                    {new Date(session.startedAt).toLocaleString()}
+                  </span>
+                  <ReportState hasReport={session.hasReport} />
+                </Link>
+                <DeleteSession
+                  session={session}
+                  onConfirm={() => remove.mutate(session.id)}
+                  disabled={remove.isPending}
+                />
+              </Row>
+            ))}
+          </RowList>
+        )}
+      </section>
+    </Page>
   );
 }
 
@@ -123,8 +162,8 @@ function DeleteSession({
       <AlertDialogTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
-          className="mr-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          size="icon-sm"
+          className="mr-2 text-ink-faint hover:bg-destructive/10 hover:text-destructive focus-visible:text-destructive"
           aria-label={`Delete session started ${started}`}
           disabled={disabled}
         >
@@ -162,16 +201,34 @@ function describeLoss(session: SessionRow): string {
 
 /**
  * Every session in this list has ended — leaving the room is what ends one —
- * so the only thing left to report is whether the report arrived. Green for
- * yes, muted grey for no: an absence rather than a failure.
+ * so the only thing left to report is whether the report arrived.
+ *
+ * This was green for yes and grey for no. A report existing is a fact about
+ * the pipeline rather than a judgement about the interview, and colour in this
+ * app is reserved for judgements, so the two states are told apart by a filled
+ * versus a hollow mark and by how dark the words are. Colour would also have
+ * put a green pip on nearly every row of a list whose whole job is to be
+ * skimmed.
  *
  * There was an amber "In progress" here once, for sessions nothing could end.
  * See [24](../../docs/adr/0024-leaving-the-room-ends-the-interview.md).
  */
 function ReportState({ hasReport }: { hasReport: boolean }) {
-  return hasReport ? (
-    <span className="text-sm text-success">Report ready</span>
-  ) : (
-    <span className="text-sm text-muted-foreground">No report</span>
+  return (
+    <span
+      className={cn(
+        "flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.1em]",
+        hasReport ? "text-ink" : "text-ink-faint",
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "size-1.5 rounded-full",
+          hasReport ? "bg-ink" : "border border-ink-faint",
+        )}
+      />
+      {hasReport ? "Report ready" : "No report"}
+    </span>
   );
 }

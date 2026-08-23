@@ -9,6 +9,11 @@ import { cn } from "@/lib/utils";
  * when the move is yours, and a status region in every other state. Nothing
  * else in the room is a filled control, so there is never a question of what to
  * press next.
+ *
+ * The two states are now told apart by more than a fill. Yours is solid ink on
+ * paper and sits proud of the page; the interviewer's is a sunk, ruled well
+ * with the icon in outline. Pressability is legible without relying on the one
+ * colour a greyscale app has left.
  */
 export function TurnBar({
   icon,
@@ -27,20 +32,26 @@ export function TurnBar({
 }) {
   const body = (
     <>
-      <span className="shrink-0">{icon}</span>
+      <span
+        className={cn(
+          "flex size-11 shrink-0 items-center justify-center rounded-md",
+          onClick ? "bg-paper/15" : "bg-sheet border border-rule",
+        )}
+      >
+        {icon}
+      </span>
       <span className="min-w-0 text-left">
         <span className="block font-semibold leading-tight">{title}</span>
         {hint && (
           <span
             className={cn(
-              "mt-0.5 block text-sm leading-snug",
+              "mt-1 block text-sm leading-snug",
               onClick
-                ? "text-primary-foreground/80"
+                ? "text-paper/70"
                 : // The hint breathes while something is in flight, which is
                   // every state that is not yours to act in.
-                  "animate-pulse text-muted-foreground",
-              tone === "warning" &&
-                (onClick ? "text-primary-foreground" : "text-warning"),
+                  "animate-pulse text-ink-muted",
+              tone === "warning" && (onClick ? "text-paper" : "text-warning"),
             )}
           >
             {hint}
@@ -51,14 +62,14 @@ export function TurnBar({
   );
 
   const shape =
-    "flex w-full max-w-md items-center gap-4 rounded-xl px-5 py-4 transition-colors";
+    "flex w-full max-w-md items-center gap-4 rounded-lg px-4 py-3.5 transition-colors";
 
   if (!onClick) {
     return (
       <div
         role="status"
         aria-live="polite"
-        className={cn(shape, "border bg-muted/40 text-muted-foreground")}
+        className={cn(shape, "border border-rule bg-sunk text-ink-muted")}
       >
         {body}
       </div>
@@ -71,7 +82,7 @@ export function TurnBar({
       onClick={onClick}
       className={cn(
         shape,
-        "bg-primary text-primary-foreground shadow-lg hover:bg-primary/90",
+        "bg-ink text-paper shadow-sm hover:bg-ink/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper",
       )}
     >
       {body}

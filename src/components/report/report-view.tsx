@@ -1,3 +1,4 @@
+import { Notice, Panel } from "@/components/ui/page";
 import {
   band,
   pillarAverages,
@@ -23,15 +24,17 @@ interface ReportViewProps {
  * looks like, and what a model that wrote usable prose but unusable JSON
  * leaves behind. The prose alone is still worth reading, so it renders without
  * apology or charts.
+ *
+ * Every block is introduced by the same field label the rest of the app uses,
+ * so the report reads as one document with named parts rather than a stack of
+ * unrelated cards.
  */
 export function ReportView({ report, turns }: ReportViewProps) {
   if (report.structured === null) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
         <CoachingNote content={report.content} />
-        <p className="text-sm text-muted-foreground">
-          Scored feedback isn’t available for this session.
-        </p>
+        <Notice>Scored feedback isn’t available for this session.</Notice>
       </div>
     );
   }
@@ -43,39 +46,51 @@ export function ReportView({ report, turns }: ReportViewProps) {
   const verdict = band(overall);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <VerdictHero
         score={overall}
         headline={structured.headline}
         answerCount={structured.turns.length}
       />
 
-      <div className="grid gap-6 rounded-xl border bg-card p-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] md:items-center">
-        <PillarRadar averages={averages} verdict={verdict} />
-        <PillarBars averages={averages} />
-      </div>
+      {/*
+        The radar and the table are not the same fact twice: the shape says
+        which pillars lag the others at a glance, the table says by how much.
+      */}
+      <Panel className="p-6">
+        <p className="field-label">Pillar breakdown</p>
+        <div className="mt-5 grid gap-8 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)] md:items-center">
+          <div className="flex justify-center">
+            <PillarRadar averages={averages} verdict={verdict} />
+          </div>
+          <PillarBars averages={averages} />
+        </div>
+      </Panel>
 
       <CoachingNote content={report.content} />
 
-      <ol className="space-y-4">
-        {structured.turns.map((assessment) => {
-          // Joined by position rather than by index: a hand-written row could
-          // score a turn that is not in the transcript, and mislabelling
-          // someone's answer is worse than omitting it.
-          const turn = turns.find(
-            (candidate) => candidate.position === assessment.position,
-          );
-          if (!turn) return null;
-          return (
-            <li key={assessment.position}>
-              <TurnCard
-                assessment={assessment}
-                questionText={turn.questionText}
-              />
-            </li>
-          );
-        })}
-      </ol>
+      <section className="space-y-4 pt-2">
+        <p className="field-label">Answer by answer</p>
+        <ol className="space-y-4">
+          {structured.turns.map((assessment) => {
+            // Joined by position rather than by index: a hand-written row could
+            // score a turn that is not in the transcript, and mislabelling
+            // someone's answer is worse than omitting it.
+            const turn = turns.find(
+              (candidate) => candidate.position === assessment.position,
+            );
+            if (!turn) return null;
+            return (
+              <li key={assessment.position}>
+                <TurnCard
+                  assessment={assessment}
+                  questionText={turn.questionText}
+                />
+              </li>
+            );
+          })}
+        </ol>
+      </section>
     </div>
   );
 }

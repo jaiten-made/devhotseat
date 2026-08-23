@@ -1,6 +1,7 @@
-import { Card } from "@/components/ui/card";
-import { asPercent, band, bandLabel } from "@/lib/report/score";
-import { BAND_BG, BAND_TEXT, formatScore } from "./score-tokens";
+import { Panel } from "@/components/ui/page";
+import { band, bandLabel } from "@/lib/report/score";
+import { ScoreGauge, ScoreValue } from "./score-gauge";
+import { BAND_TEXT, formatScore } from "./score-tokens";
 
 interface VerdictHeroProps {
   readonly score: number;
@@ -8,7 +9,14 @@ interface VerdictHeroProps {
   readonly answerCount: number;
 }
 
-/** The one thing to take away, before any of the detail underneath it. */
+/**
+ * The one thing to take away, before any of the detail underneath it.
+ *
+ * The panel's decision on the left, the number it came from on the right, and
+ * a rule between them — the two halves of an interview scorecard. The verdict
+ * is the only place in the report set at heading size, because it is the only
+ * thing here that is a conclusion rather than a measurement.
+ */
 export function VerdictHero({
   score,
   headline,
@@ -19,45 +27,35 @@ export function VerdictHero({
   const verdict = band(score);
 
   return (
-    <Card className="gap-0 py-0">
-      <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Overall
-          </p>
+    <Panel>
+      <div className="flex flex-col divide-y divide-rule sm:flex-row sm:divide-x sm:divide-y-0">
+        <div className="min-w-0 flex-1 p-6">
+          <p className="field-label">Verdict</p>
           <p
-            className={`text-2xl font-semibold tracking-tight ${BAND_TEXT[verdict]}`}
+            className={`mt-2.5 text-2xl font-semibold leading-none tracking-tight ${BAND_TEXT[verdict]}`}
           >
             {bandLabel(verdict)}
           </p>
-          <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-ink-muted">
             {headline}
           </p>
         </div>
 
-        <div className="shrink-0 sm:w-48 sm:text-right">
-          <p className="flex items-baseline gap-1 sm:justify-end">
-            <span
-              className={`text-5xl font-semibold tabular-nums tracking-tight ${BAND_TEXT[verdict]}`}
-            >
-              {formatScore(score)}
-            </span>
-            <span className="text-lg text-muted-foreground">/ 4</span>
-          </p>
-          <div
-            className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted"
-            role="presentation"
-          >
-            <div
-              className={`h-full rounded-full ${BAND_BG[verdict]}`}
-              style={{ width: `${asPercent(score)}%` }}
+        <div className="shrink-0 p-6 sm:w-52">
+          <p className="field-label">Overall</p>
+          <p className="mt-2">
+            <ScoreValue
+              value={formatScore(score)}
+              size="lg"
+              className={BAND_TEXT[verdict]}
             />
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">
+          </p>
+          <ScoreGauge value={score} className="mt-3.5" />
+          <p className="mt-2.5 text-xs text-ink-faint">
             {answerCount} {answerCount === 1 ? "answer" : "answers"} scored
           </p>
         </div>
       </div>
-    </Card>
+    </Panel>
   );
 }

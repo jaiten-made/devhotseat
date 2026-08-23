@@ -85,7 +85,12 @@ test("add questions, run a session, read the transcript and report", async ({
   await expect(page.getByText("Overall")).toBeVisible();
   await expect(page.getByText("/ 4", { exact: true })).toBeVisible();
   await expect(page.getByRole("img", { name: /STAR-L scores/ })).toBeVisible();
-  await expect(page.getByText("55% of the score")).toBeVisible();
+  // What each pillar is worth is a column of the breakdown table rather than a
+  // chip repeated on every row, so the header and the value are both asserted.
+  await expect(
+    page.getByRole("columnheader", { name: "Weight" }),
+  ).toBeVisible();
+  await expect(page.getByText("55%")).toBeVisible();
   await expect(page.getByText("Why these scores")).toHaveCount(5);
   await expect(
     page.getByText("Stubbed strength for question 3."),

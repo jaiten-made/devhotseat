@@ -1,58 +1,62 @@
 import { PILLARS } from "@/lib/report/rubric";
 import type { PillarScores } from "@/lib/report/score";
-import { formatScore, SCORE_BG } from "./score-tokens";
-
-const SEGMENTS = [1, 2, 3, 4];
+import { ScoreGauge, ScoreValue } from "./score-gauge";
+import { formatScore } from "./score-tokens";
 
 /**
- * A four-cell track rather than a smooth bar. The underlying scale is four
- * whole numbers, and a continuous bar would imply a precision the rubric does
- * not have.
+ * Each pillar averaged across every answer, next to what it is worth.
+ *
+ * A real table rather than a definition list: this is three columns of aligned
+ * data, and the weights only make sense once the column they sit in is named.
+ * Naming it once in a header beats repeating "of the score" on all five rows,
+ * which is what the chips beside each label used to do.
  */
-function SegmentedTrack({ value }: { value: number }) {
-  const rounded = Math.round(value);
-  return (
-    <div className="flex h-2 flex-1 gap-0.5" role="presentation">
-      {SEGMENTS.map((segment) => {
-        // The last filled cell carries the fraction, so 3.4 reads as three
-        // cells and a little.
-        const fill = Math.min(Math.max(value - (segment - 1), 0), 1);
-        return (
-          <div
-            key={segment}
-            className="flex-1 overflow-hidden rounded-[2px] bg-muted"
-          >
-            <div
-              className={`h-full ${SCORE_BG[rounded] ?? "bg-primary"}`}
-              style={{ width: `${fill * 100}%` }}
-            />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/** Each pillar averaged across every answer, next to what it is worth. */
 export function PillarBars({ averages }: { averages: PillarScores }) {
   return (
-    <dl className="space-y-4">
-      {PILLARS.map((pillar) => (
-        <div key={pillar.id}>
-          <div className="mb-1.5 flex items-baseline justify-between gap-3">
-            <dt className="flex items-baseline gap-2 text-sm font-medium">
+    <table className="w-full border-collapse text-left">
+      <caption className="sr-only">
+        The five STAR-L pillars, what each is worth, and the average score
+        across every answer
+      </caption>
+      <thead>
+        <tr className="border-b border-rule">
+          <th scope="col" className="field-label pb-2 font-medium">
+            Pillar
+          </th>
+          <th scope="col" className="field-label pb-2 text-right font-medium">
+            Weight
+          </th>
+          <th scope="col" className="field-label pb-2 text-right font-medium">
+            Score
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {PILLARS.map((pillar) => (
+          <tr key={pillar.id} className="border-b border-rule last:border-0">
+            <th
+              scope="row"
+              className="py-2.5 pr-3 text-sm font-medium leading-none"
+            >
               {pillar.label}
-              <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-normal text-muted-foreground">
-                {pillar.weight}% of the score
+            </th>
+            <td className="py-2.5 pr-4 text-right">
+              <span className="font-mono text-xs tabular-nums text-ink-faint">
+                {pillar.weight}%
               </span>
-            </dt>
-            <dd className="text-sm font-medium tabular-nums">
-              {formatScore(averages[pillar.id])}
-            </dd>
-          </div>
-          <SegmentedTrack value={averages[pillar.id]} />
-        </div>
-      ))}
-    </dl>
+            </td>
+            <td className="py-2.5">
+              <div className="flex items-center justify-end gap-2.5">
+                <ScoreGauge value={averages[pillar.id]} size="sm" />
+                <ScoreValue
+                  value={formatScore(averages[pillar.id])}
+                  className="w-7 text-right"
+                />
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }

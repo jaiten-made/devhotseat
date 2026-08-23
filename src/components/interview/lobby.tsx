@@ -13,7 +13,8 @@ import type { ReactNode } from "react";
  * this will take, how the turns work, and that the microphone is about to be
  * asked for. The three steps carry the icons the turn bar uses for the same
  * moments, so the control at the bottom is already familiar the first time it
- * changes.
+ * changes. They are not numbered as well: the icons already carry the order,
+ * and a step cannot be pointed at later the way a question can.
  *
  * No avatar: it reports whether the microphone is open, and in the lobby the
  * answer is "not yet, and not for any reason worth a warning icon".
@@ -21,21 +22,21 @@ import type { ReactNode } from "react";
 export function Lobby({ questionCount }: { questionCount: number }) {
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-8 text-center">
-      <span className="rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <span className="field-label rounded-full border border-rule bg-sheet px-3 py-1.5">
         {questionCount} {questionCount === 1 ? "question" : "questions"}
       </span>
 
-      <div className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">
+      <div className="space-y-3">
+        <h1 className="text-[2rem] font-semibold leading-none tracking-tight">
           Ready when you are
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-[0.9375rem] leading-relaxed text-ink-muted">
           You will be asked one question at a time, out loud, and you answer out
           loud. Nothing is asked until you start.
         </p>
       </div>
 
-      <ol className="w-full space-y-4 rounded-xl border bg-muted/30 p-5 text-left">
+      <ol className="w-full divide-y divide-rule overflow-hidden rounded-lg border border-rule bg-sheet text-left">
         <Step icon={<Volume2 className="size-4" />} title="Listen">
           The interviewer reads the question aloud.
         </Step>
@@ -48,7 +49,7 @@ export function Lobby({ questionCount }: { questionCount: number }) {
         </Step>
       </ol>
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs leading-relaxed text-ink-faint">
         Your browser will ask to use the microphone. You can switch to typing at
         any time.
       </p>
@@ -66,13 +67,13 @@ function Step({
   children: ReactNode;
 }) {
   return (
-    <li className="flex gap-3">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm">
+    <li className="flex gap-3.5 px-4 py-3.5">
+      <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border border-rule bg-paper text-ink-muted">
         {icon}
       </span>
       <span className="text-sm leading-snug">
         <span className="block font-medium">{title}</span>
-        <span className="text-muted-foreground">{children}</span>
+        <span className="mt-0.5 block text-ink-muted">{children}</span>
       </span>
     </li>
   );

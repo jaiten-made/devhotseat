@@ -1,3 +1,16 @@
+/*
+ * Type. Self-hosted so a local-only app has no network dependency on a font
+ * CDN, and so the interview room looks the same on a plane as on a desk.
+ *
+ * Outfit sets everything the user reads as language: questions, answers,
+ * coaching prose. IBM Plex Mono sets everything the user reads as data:
+ * scores, positions, field labels, weights. Which face a thing is set in says
+ * which of the two it is, so the distinction never has to be explained.
+ */
+@import "@fontsource-variable/outfit";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
 @import "tailwindcss";
 
 /*
@@ -10,46 +23,101 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * shadcn/ui's design tokens, neutral base. The components reference these by
- * name (bg-primary, text-muted-foreground, border-input and so on), so they
- * have to exist before any of them render correctly.
+ * The palette is greyscale, and colour is reserved for judgements.
+ *
+ * Everything structural — surfaces, rules, controls, text — is zero chroma, so
+ * the only coloured things on any screen are the ones saying how an answer
+ * scored or warning what an action will destroy. Colour is the assessor's
+ * second pen, not the paper it writes on. See
+ * [27](../../docs/adr/0027-greyscale-with-colour-reserved-for-judgements.md).
  */
 :root {
   /* Light-only app: keep form controls and scrollbars light regardless of the
      operating system preference. */
   color-scheme: light;
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.23 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.23 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.23 0 0);
-  --primary: oklch(0.27 0 0);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0 0);
-  --secondary-foreground: oklch(0.27 0 0);
-  --muted: oklch(0.96 0 0);
-  --muted-foreground: oklch(0.53 0 0);
-  --accent: oklch(0.96 0 0);
-  --accent-foreground: oklch(0.27 0 0);
-  --destructive: oklch(0.52 0.2 27);
+
+  /*
+   * The greyscale ramp, and the single source of truth for every neutral in
+   * the app. Named for the job rather than the value, so a screen asks for
+   * "sunk" rather than picking a number off a scale and hoping it matches the
+   * next screen along.
+   */
+  --paper: oklch(0.975 0 0);
+  --sheet: oklch(1 0 0);
+  --sunk: oklch(0.955 0 0);
+  --wash: oklch(0.935 0 0);
+
+  /*
+   * Three tiers of text, and all three clear WCAG AA (4.5:1) against `--sunk`,
+   * the darkest surface any of them is ever set on. An earlier faint of 0.62
+   * looked right and measured 3.19:1 — fine for a rule, not for the position
+   * markers and pillar weights actually set in it.
+   */
+  --ink: oklch(0.2 0 0);
+  --ink-muted: oklch(0.44 0 0);
+  --ink-faint: oklch(0.53 0 0);
+
+  --rule: oklch(0.915 0 0);
+  --rule-strong: oklch(0.85 0 0);
+
+  /*
+   * Semantic colour. Chroma is deliberately low: these have to read as
+   * annotations on a greyscale page rather than as a second UI theme, and at
+   * full saturation a single red trash icon dominated an entire list. All four
+   * are dark enough to pass AA as small text on `--sheet`.
+   */
+  --destructive: oklch(0.5 0.16 25);
   --destructive-foreground: oklch(0.99 0 0);
-  /* Semantic states. Chosen dark enough to pass as small text on white. */
-  --success: oklch(0.5 0.13 155);
+  --success: oklch(0.47 0.09 155);
   --success-foreground: oklch(0.99 0 0);
-  --warning: oklch(0.52 0.12 70);
+  --warning: oklch(0.51 0.09 70);
   --warning-foreground: oklch(0.99 0 0);
-  --border: oklch(0.92 0 0);
-  --input: oklch(0.92 0 0);
-  --ring: oklch(0.7 0 0);
+
+  /*
+   * shadcn's token names, mapped onto the ramp above. The components reference
+   * these by name (bg-primary, text-muted-foreground, border-input and so on),
+   * so they have to keep existing — but nothing in this app should reach for
+   * them directly when a ramp name says the same thing more plainly.
+   */
+  --radius: 0.375rem;
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--sheet);
+  --card-foreground: var(--ink);
+  --popover: var(--sheet);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: var(--sunk);
+  --secondary-foreground: var(--ink);
+  --muted: var(--sunk);
+  --muted-foreground: var(--ink-muted);
+  --accent: var(--sunk);
+  --accent-foreground: var(--ink);
+  --border: var(--rule);
+  --input: var(--rule-strong);
+  --ring: oklch(0.55 0 0);
 }
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: "Outfit Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+
+  --color-paper: var(--paper);
+  --color-sheet: var(--sheet);
+  --color-sunk: var(--sunk);
+  --color-wash: var(--wash);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -79,7 +147,49 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground antialiased;
+    /* Outfit ships proportional figures by default. Scores, counts and
+       positions are compared down a column, so they have to line up. */
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * Headings run tight and are never louder than they need to be: the loudest
+   * thing on any screen should be a question or a verdict, not a page title.
+   */
+  h1,
+  h2,
+  h3 {
+    @apply tracking-tight;
+  }
+}
+
+@layer components {
+  /*
+   * The field label: a form's name for what sits under it, in the data face,
+   * tracked out and small. It is the one device repeated on every screen —
+   * over the pillars, the transcript blocks, the report sections, the room's
+   * own header — so unrelated parts of the app are visibly the same document.
+   */
+  .field-label {
+    @apply font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-ink-muted;
+  }
+}
+
+/*
+ * Nothing here moves on its own. The one exception is the turn bar's hint,
+ * which breathes while the app owes the user something — and even that stops
+ * when the machine is asked to stop animating.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
