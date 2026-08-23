@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { titleCase } from "@/lib/title-case";
 import { cn } from "@/lib/utils";
 
 /**
@@ -28,6 +29,10 @@ export function Page({ children }: { children: ReactNode }) {
  * app you are standing in, which is also what the nav has highlighted — saying
  * it twice is what makes a full-viewport screen like the interview room, with
  * no nav to highlight, still feel like part of the app.
+ *
+ * The title is cast in headline capitals here rather than at each call site,
+ * so a route cannot spell one differently from the next. The eyebrow is left
+ * alone: it is as often a count or a timestamp as it is a phrase.
  */
 export function PageHeader({
   eyebrow,
@@ -46,7 +51,7 @@ export function PageHeader({
         <div className="min-w-0">
           <p className="field-label">{eyebrow}</p>
           <h1 className="mt-2.5 text-[1.75rem] font-semibold leading-none">
-            {title}
+            {titleCase(title)}
           </h1>
           {description && (
             <p className="mt-3 max-w-prose text-[0.9375rem] leading-relaxed text-ink-muted">
@@ -63,7 +68,9 @@ export function PageHeader({
 /**
  * A titled block within a screen. The title is set at body size rather than as
  * a smaller heading — the hierarchy is carried by the rule above it and the
- * space around it, so a section never competes with the page title.
+ * space around it, so a section never competes with the page title. It is cast
+ * in the same headline capitals as a page title, so the two read as one family
+ * of headings rather than two.
  */
 export function Section({
   title,
@@ -80,7 +87,7 @@ export function Section({
     <section>
       <div className="mb-5 flex items-baseline justify-between gap-4 border-b border-rule pb-3">
         <div className="min-w-0">
-          <h2 className="text-base font-semibold">{title}</h2>
+          <h2 className="text-base font-semibold">{titleCase(title)}</h2>
           {description && (
             <p className="mt-1 text-sm text-ink-muted">{description}</p>
           )}
