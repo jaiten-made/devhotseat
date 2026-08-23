@@ -20,6 +20,23 @@ const buttonVariants = cva(
           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
       },
+      /*
+       * The semantic accent a control reveals on hover, kept here rather than
+       * hand-written per call site. Only the coloured half lives in the tone:
+       * the resting ink stays with the caller, because an icon-only button
+       * rests at `ink-faint` and a labelled one at `ink-muted`, and that is a
+       * neutral choice rather than a judgement.
+       *
+       * Declared after `variant` so twMerge resolves these over the base
+       * hover. `hover:border-*` is inert on the borderless variants.
+       */
+      tone: {
+        none: "",
+        destructive:
+          "hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive focus-visible:text-destructive",
+        success:
+          "hover:border-success/30 hover:bg-success/10 hover:text-success focus-visible:text-success",
+      },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",
         xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
@@ -33,6 +50,7 @@ const buttonVariants = cva(
     },
     defaultVariants: {
       variant: "default",
+      tone: "none",
       size: "default",
     },
   },
@@ -41,6 +59,7 @@ const buttonVariants = cva(
 function Button({
   className,
   variant = "default",
+  tone = "none",
   size = "default",
   asChild = false,
   ...props
@@ -54,8 +73,9 @@ function Button({
     <Comp
       data-slot="button"
       data-variant={variant}
+      data-tone={tone}
       data-size={size}
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(buttonVariants({ variant, tone, size, className }))}
       {...props}
     />
   );

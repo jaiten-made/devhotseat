@@ -27,8 +27,9 @@
  *
  * Everything structural — surfaces, rules, controls, text — is zero chroma, so
  * the only coloured things on any screen are the ones saying how an answer
- * scored or warning what an action will destroy. Colour is the assessor's
- * second pen, not the paper it writes on. See
+ * scored, or naming what an action is about to make or destroy. Colour is the
+ * assessor's second pen, not the paper it writes on. On buttons it is reached
+ * for through `tone`, never by hand. See
  * [27](../../docs/adr/0027-greyscale-with-colour-reserved-for-judgements.md).
  */
 :root {

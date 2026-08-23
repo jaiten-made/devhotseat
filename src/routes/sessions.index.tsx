@@ -163,7 +163,8 @@ function DeleteSession({
         <Button
           variant="ghost"
           size="icon-sm"
-          className="mr-2 text-ink-faint hover:bg-destructive/10 hover:text-destructive focus-visible:text-destructive"
+          tone="destructive"
+          className="mr-2 text-ink-faint"
           aria-label={`Delete session started ${started}`}
           disabled={disabled}
         >

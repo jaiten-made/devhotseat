@@ -134,6 +134,8 @@ function QuestionBank() {
           <Button
             type="submit"
             variant="outline"
+            tone="success"
+            className="text-ink-muted"
             disabled={text.trim() === "" || add.isPending}
           >
             Add
@@ -164,7 +166,8 @@ function QuestionBank() {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      className="text-ink-faint hover:bg-destructive/10 hover:text-destructive focus-visible:text-destructive"
+                      tone="destructive"
+                      className="text-ink-faint"
                       aria-label={`Delete question: ${question.text}`}
                       disabled={remove.isPending}
                     >

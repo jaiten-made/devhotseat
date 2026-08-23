@@ -305,8 +305,9 @@ function EndInterview({
         <Button
           variant="ghost"
           size="sm"
+          tone="destructive"
           disabled={pending}
-          className="shrink-0 text-ink-muted hover:bg-destructive hover:text-destructive-foreground"
+          className="shrink-0 text-ink-muted"
         >
           <PhoneOff className="size-4" />
           {pending ? "Ending…" : "End interview"}
