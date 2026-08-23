@@ -8,7 +8,6 @@ test("the dashboard invites a first session rather than charting a blank year", 
   await page.goto("/dashboard");
 
   await expect(page.getByText("No practice to chart yet")).toBeVisible();
-  await expect(page.getByText("Nothing practised yet")).toBeVisible();
   // Nothing claiming a streak, and no grid of empty squares.
   await expect(
     page.getByRole("term").filter({ hasText: "Current streak" }),
@@ -33,39 +32,45 @@ test("a run of days reads as a current streak, and a gap ends the last one", asy
   await expect(stat("Current streak")).toContainText("3 days");
   await expect(stat("Longest streak")).toContainText("4 days");
   await expect(stat("Days practised")).toContainText("7 days");
-  await expect(page.getByText("7 days practised")).toBeVisible();
 });
 
-test("a day names its own sessions, and two sittings read darker than one", async ({
+test("a day names what was answered on it, however many sittings that took", async ({
   page,
 }) => {
   await resetDatabase();
-  // Two sessions today, one yesterday.
+  // Two sessions today, one yesterday, nothing the day before.
   await seedPractice([0, 0, 1]);
   await page.goto("/dashboard");
 
-  const today = page.getByTitle(/^2 sessions, 4 answers on /);
-  const yesterday = page.getByTitle(/^1 session, 2 answers on /);
+  // Twice in a day is one square, and it counts the answers rather than the
+  // sittings: sitting down is what the map records, not how often.
+  const today = page.getByTitle(/^4 answers on /);
+  const yesterday = page.getByTitle(/^2 answers on /);
   await expect(today).toBeVisible();
   await expect(yesterday).toBeVisible();
+  await expect(page.getByTitle(/session/)).toHaveCount(0);
 
-  // The ramp is one ink at four densities, so a busier day is a darker square
-  // and never a different hue. Asserted rather than left to the eye, because
-  // a coloured heatmap would break the rule the whole palette is built on.
+  // A square is filled or it is empty, and both are the same ink: a coloured
+  // heatmap would break the rule the whole palette is built on. Asserted
+  // rather than left to the eye.
   const fill = (locator: typeof today) =>
     locator.evaluate((node) => getComputedStyle(node).backgroundColor);
-  const busy = await fill(today);
-  const quiet = await fill(yesterday);
-  expect(busy).not.toBe(quiet);
-  for (const colour of [busy, quiet]) {
-    expect(colour).toMatch(/^(?:oklab|color|rgba?)\(/);
+  const practised = await fill(today);
+  const unpractised = await fill(page.getByTitle(/^No practice on /).first());
+  expect(practised).not.toBe(unpractised);
+  expect(await fill(yesterday)).toBe(practised);
+  for (const colour of [practised, unpractised]) {
+    expect(colour).toMatch(/^(?:oklab|oklch|color|rgba?)\(/);
     expect(greyscale(colour)).toBe(true);
   }
 });
 
 /**
- * Whether a computed colour carries any hue. `oklab(l a b / alpha)` is grey
- * when a and b are zero; an `rgb()` fallback is grey when its channels match.
+ * Whether a computed colour carries any hue. Chrome reports a token with an
+ * alpha as `oklab(l a b / alpha)` and one without as the `oklch(l c h)` it was
+ * written in, so both spellings turn up in the same grid: the first is grey
+ * when a and b are zero, the second when its chroma is. An `rgb()` fallback is
+ * grey when its channels match.
  */
 function greyscale(colour: string): boolean {
   const numbers = [...colour.matchAll(/-?\d*\.?\d+/g)].map((match) =>
@@ -73,6 +78,9 @@ function greyscale(colour: string): boolean {
   );
   if (colour.startsWith("oklab")) {
     return numbers[1] === 0 && numbers[2] === 0;
+  }
+  if (colour.startsWith("oklch")) {
+    return numbers[1] === 0;
   }
   return numbers[0] === numbers[1] && numbers[1] === numbers[2];
 }

@@ -117,9 +117,10 @@ refused. A session you do not want to keep can be deleted from the **Sessions**
 list; its transcript and report go with it.
 
 **Dashboard** is the practice log read as a habit: a square a day for the last
-year, darker the more sessions that day held, with the current and longest
-streaks above it. A day counts once a session that started on it has been
-answered at all, and a streak is not broken by a day that is not over yet.
+year, filled for every day you practised, with the current and longest streaks
+above it. A day counts once a session that started on it has been answered at
+all — however many sittings that took — and a streak is not broken by a day
+that is not over yet.
 
 ## Testing
 

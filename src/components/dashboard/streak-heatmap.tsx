@@ -1,33 +1,22 @@
 import { addDays } from "@/lib/activity/day";
-import type { Heatmap, HeatmapDay, Level } from "@/lib/activity/heatmap";
+import type { Heatmap, HeatmapDay } from "@/lib/activity/heatmap";
 import { cn } from "@/lib/utils";
 
 /**
  * A year of practice, one square a day, the way a contribution graph does it.
  *
- * The ramp is one ink at four densities. A heatmap is a sequential scale, and
- * the rule in this app is that colour says how something scored — a count of
- * sittings is not a judgement, so it stays grey and lets density carry "more".
- * That is all GitHub's green is doing too; the hue is decoration on it.
- * See [27](../../../docs/adr/0027-greyscale-with-colour-reserved-for-judgements.md).
+ * A square is filled or it is not. The map answers the question a streak is
+ * made of — did I sit down that day — and shading it by how many times over
+ * answered one nobody asked. Two weights of one ink also need no key: filled
+ * and empty explain themselves, where four steps of grey had to be legended.
  *
- * Written out in full rather than interpolated, because Tailwind finds class
- * names by scanning source text and `bg-ink/${n}` compiles to nothing. Same
- * reason as the report's score tokens.
+ * Grey rather than a hue because colour in this app says how an answer scored,
+ * and sitting down is not a judgement. That is all GitHub's green is doing
+ * too; the hue is decoration on it. See
+ * [27](../../../docs/adr/0027-greyscale-with-colour-reserved-for-judgements.md).
  */
-const LEVEL_FILL: Record<Level, string> = {
-  0: "bg-ink/8",
-  1: "bg-ink/35",
-  2: "bg-ink/65",
-  3: "bg-ink",
-};
-
-/** The three steps that need explaining. An empty square explains itself. */
-const KEY_STEPS: ReadonlyArray<{ level: Level; label: string }> = [
-  { level: 1, label: "1" },
-  { level: 2, label: "2" },
-  { level: 3, label: "3+" },
-];
+const PRACTISED = "bg-ink";
+const UNPRACTISED = "bg-ink/8";
 
 const MONTH = new Intl.DateTimeFormat(undefined, { month: "short" });
 const WEEKDAY = new Intl.DateTimeFormat(undefined, { weekday: "short" });
@@ -43,74 +32,55 @@ const LABELLED_ROWS = new Set([0, 2, 4]);
 
 export function StreakHeatmap({ heatmap }: { heatmap: Heatmap }) {
   return (
-    <div className="space-y-4">
-      {/* A year of weeks is wider than a phone. It scrolls rather than
-          reflowing: a contribution graph with wrapped weeks is no longer one. */}
-      <div className="overflow-x-auto">
-        <table className="border-separate border-spacing-[2px]">
-          <caption className="sr-only">
-            Practice by day, from {DAY.format(heatmap.from)} to{" "}
-            {DAY.format(heatmap.to)}, one square a day and darker for more
-            sessions. Only the days practised are read out.
-          </caption>
-          <thead>
-            <tr>
-              {/* The corner above the weekday names. */}
-              <td />
-              {heatmap.months.map((month) => (
-                <th
-                  key={month.start.toISOString()}
-                  scope="colgroup"
-                  colSpan={month.span}
-                  className="field-label pb-1 text-left font-medium"
-                >
-                  {/* Three letters need three columns under them. A month
-                      the window only caught the tail of goes unlabelled
-                      rather than sitting on top of its neighbour. */}
-                  {month.span > 2 ? MONTH.format(month.start) : ""}
-                </th>
+    // A year of weeks is wider than a phone. It scrolls rather than reflowing:
+    // a contribution graph with wrapped weeks is no longer one.
+    <div className="overflow-x-auto">
+      <table className="border-separate border-spacing-[2px]">
+        <caption className="sr-only">
+          Practice by day, from {DAY.format(heatmap.from)} to{" "}
+          {DAY.format(heatmap.to)}, one square a day and filled for every day
+          practised. Only the days practised are read out.
+        </caption>
+        <thead>
+          <tr>
+            {/* The corner above the weekday names. */}
+            <td />
+            {heatmap.months.map((month) => (
+              <th
+                key={month.start.toISOString()}
+                scope="colgroup"
+                colSpan={month.span}
+                className="field-label pb-1 text-left font-medium"
+              >
+                {/* Three letters need three columns under them. A month the
+                    window only caught the tail of goes unlabelled rather than
+                    sitting on top of its neighbour. */}
+                {month.span > 2 ? MONTH.format(month.start) : ""}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {weekdayRows(heatmap.from).map(({ row, date }) => (
+            <tr key={date.toISOString()}>
+              <th
+                scope="row"
+                className="field-label pr-1.5 text-right align-middle font-medium"
+              >
+                {LABELLED_ROWS.has(row) ? WEEKDAY.format(date) : ""}
+              </th>
+              {heatmap.weeks.map((week) => (
+                // The week and the weekday name the square between them,
+                // which holds even where the day itself is not born yet.
+                <Cell
+                  key={`${week.monday.toISOString()}-${row}`}
+                  day={week.days[row] ?? null}
+                />
               ))}
             </tr>
-          </thead>
-          <tbody>
-            {weekdayRows(heatmap.from).map(({ row, date }) => (
-              <tr key={date.toISOString()}>
-                <th
-                  scope="row"
-                  className="field-label pr-1.5 text-right align-middle font-medium"
-                >
-                  {LABELLED_ROWS.has(row) ? WEEKDAY.format(date) : ""}
-                </th>
-                {heatmap.weeks.map((week) => (
-                  // The week and the weekday name the square between them,
-                  // which holds even where the day itself is not born yet.
-                  <Cell
-                    key={`${week.monday.toISOString()}-${row}`}
-                    day={week.days[row] ?? null}
-                  />
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex items-center gap-4">
-        <p className="field-label">Sessions a day</p>
-        <ul className="flex items-center gap-3">
-          {KEY_STEPS.map((step) => (
-            <li key={step.level} className="flex items-center gap-1.5">
-              <span
-                aria-hidden="true"
-                className={cn("size-2.5 rounded-[2px]", LEVEL_FILL[step.level])}
-              />
-              <span className="font-mono text-[11px] tabular-nums text-ink-muted">
-                {step.label}
-              </span>
-            </li>
           ))}
-        </ul>
-      </div>
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -132,10 +102,10 @@ function Cell({ day }: { day: HeatmapDay | null }) {
         title={label}
         className={cn(
           "size-2.5 rounded-[2px] transition-shadow hover:ring-1 hover:ring-ink/40",
-          LEVEL_FILL[day.level],
+          day.practised ? PRACTISED : UNPRACTISED,
         )}
       >
-        {day.sessions > 0 && <span className="sr-only">{label}</span>}
+        {day.practised && <span className="sr-only">{label}</span>}
       </div>
     </td>
   );
@@ -151,8 +121,8 @@ function weekdayRows(from: Date): Array<{ row: number; date: Date }> {
 
 function describeDay(day: HeatmapDay): string {
   const date = DAY.format(day.date);
-  if (day.sessions === 0) return `No practice on ${date}`;
-  return `${count(day.sessions, "session")}, ${count(day.answers, "answer")} on ${date}`;
+  if (!day.practised) return `No practice on ${date}`;
+  return `${count(day.answers, "answer")} on ${date}`;
 }
 
 function count(value: number, noun: string): string {

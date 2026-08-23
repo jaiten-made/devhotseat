@@ -17,12 +17,6 @@ export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
 });
 
-/** The screen's one number, the way the other two lists state theirs. */
-function streakEyebrow(days: number): string {
-  if (days === 0) return "Nothing practised yet";
-  return `${days} ${days === 1 ? "day" : "days"} practised`;
-}
-
 /**
  * The dashboard is the session list read a second way.
  *
@@ -48,9 +42,13 @@ function Dashboard() {
   // still recognisably this screen.
   const header = (
     <PageHeader
-      eyebrow={heatmap ? streakEyebrow(heatmap.daysPractised) : "Practice log"}
+      // The other two screens count their rows here. This one does not: the
+      // days practised are already stated underneath, at the size the number
+      // deserves, and saying it twice above the title only made the header
+      // argue with the panel below it.
+      eyebrow="Practice log"
       title="Dashboard"
-      description="How often you sit in the hot seat. One square a day, darker the more sessions it held."
+      description="How often you sit in the hot seat."
     />
   );
 
@@ -100,7 +98,7 @@ function Dashboard() {
       <StreakStats heatmap={heatmap} />
       <Section
         title="The last year"
-        description="A square for every day, Monday at the top. A day you answered nothing is a day you did not practise."
+        description="A square for every day, Monday at the top, filled for the days you practised. A day you answered nothing is a day you did not practise."
       >
         <Panel className="px-5 py-5">
           <StreakHeatmap heatmap={heatmap} />

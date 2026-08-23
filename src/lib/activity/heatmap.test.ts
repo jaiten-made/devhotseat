@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { dayKey } from "./day";
-import { type ActivitySession, buildHeatmap, level, streaks } from "./heatmap";
+import { type ActivitySession, buildHeatmap, streaks } from "./heatmap";
 
 /** A sunny Sunday, chosen because it is the last day of its week. */
 const TODAY = new Date(2026, 7, 23, 20, 30);
@@ -13,16 +13,6 @@ function on(key: string, hour = 9): Date {
   const [year, month, day] = key.split("-").map(Number);
   return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1, hour);
 }
-
-describe("level", () => {
-  it("gives one step per sitting, and stops at three", () => {
-    expect(level(0)).toBe(0);
-    expect(level(1)).toBe(1);
-    expect(level(2)).toBe(2);
-    expect(level(3)).toBe(3);
-    expect(level(40)).toBe(3);
-  });
-});
 
 describe("buildHeatmap", () => {
   it("draws 53 columns of seven, ending on the week today sits in", () => {
@@ -49,7 +39,7 @@ describe("buildHeatmap", () => {
     expect(last.slice(4)).toEqual([null, null, null]);
   });
 
-  it("counts sessions and answers onto the day they were sat", () => {
+  it("marks the day a session was sat, and sums what was answered on it", () => {
     const map = buildHeatmap(
       [sat(on("2026-08-23", 9), 4), sat(on("2026-08-23", 21), 2)],
       { today: TODAY },
@@ -57,13 +47,20 @@ describe("buildHeatmap", () => {
 
     const today = map.weeks.at(-1)?.days.at(-1);
     expect(today?.key).toBe("2026-08-23");
-    expect(today?.sessions).toBe(2);
+    expect(today?.practised).toBe(true);
     expect(today?.answers).toBe(6);
-    expect(today?.level).toBe(2);
 
+    // Twice in a day is still one day practised. The square does not grade it.
     expect(map.daysPractised).toBe(1);
-    expect(map.sessions).toBe(2);
-    expect(map.answers).toBe(6);
+  });
+
+  it("leaves a day nothing was sat on unpractised", () => {
+    const map = buildHeatmap([sat(on("2026-08-23"))], { today: TODAY });
+
+    const yesterday = map.weeks.at(-1)?.days.at(-2);
+    expect(yesterday?.key).toBe("2026-08-22");
+    expect(yesterday?.practised).toBe(false);
+    expect(yesterday?.answers).toBe(0);
   });
 
   it("accepts the timestamp as the string a server function serialises", () => {
@@ -71,13 +68,13 @@ describe("buildHeatmap", () => {
       [{ startedAt: on("2026-08-23").toISOString(), answeredCount: 1 }],
       { today: TODAY },
     );
-    expect(map.weeks.at(-1)?.days.at(-1)?.sessions).toBe(1);
+    expect(map.weeks.at(-1)?.days.at(-1)?.practised).toBe(true);
   });
 
   it("ignores a session nobody answered", () => {
     const map = buildHeatmap([sat(on("2026-08-23"), 0)], { today: TODAY });
 
-    expect(map.weeks.at(-1)?.days.at(-1)?.level).toBe(0);
+    expect(map.weeks.at(-1)?.days.at(-1)?.practised).toBe(false);
     expect(map.daysPractised).toBe(0);
     expect(map.currentStreak).toBe(0);
   });
@@ -88,7 +85,6 @@ describe("buildHeatmap", () => {
     });
 
     expect(map.daysPractised).toBe(1);
-    expect(map.sessions).toBe(1);
   });
 
   // The graph scrolls; history does not.

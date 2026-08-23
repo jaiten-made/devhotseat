@@ -1,5 +1,9 @@
 # 29. The dashboard is one heatmap, derived in the browser
 
+Amended 2026-08-23: a square is filled or empty. The four-step ramp keyed to
+sessions per day is gone, with the legend it needed, and so is the count of
+days practised that was stated in the header's eyebrow as well as underneath.
+
 ## Decision
 
 The Dashboard screen holds exactly one visualisation: a contribution-graph
@@ -11,7 +15,7 @@ Everything on it is derived in the browser from `sessionsQuery` — the same
 query the Sessions list already runs. There is no analytics server function, no
 aggregate SQL and no new table.
 
-Five rules decide what a square means:
+Four rules decide what a square means:
 
 - **A day is practised if a session that started on it was answered at all.**
   A room opened and left again is not practice. A session ended after three of
@@ -21,14 +25,14 @@ Five rules decide what a square means:
   Brisbane evening belongs to that evening. Postgres runs on UTC in the compose
   file and is not asked; the browser is the only party that knows where the
   user is standing.
-- **Darkness is the session count, on absolute thresholds:** one sitting, two,
-  three or more. Not quartiles of the busiest day.
+- **A square is filled or it is empty.** It does not grade the day. One sitting
+  and four look the same, and the day's own label says how much was answered.
 - **A streak survives today.** A run ending yesterday is still current, and
   goes to zero once a whole day has been missed.
 - **Weeks start on Monday**, and the streaks are computed over all history
   rather than over the year on screen.
 
-The ramp is one ink at four opacities. No hue.
+Both states are the same ink, solid for practised and at 8% for not. No hue.
 
 ## Why
 
@@ -53,9 +57,12 @@ is a count, not a judgement, so it is told in density — which is all GitHub's
 green is doing, with a hue laid over the top. It also keeps the report the only
 coloured thing in the app.
 
-Absolute thresholds rather than relative ones because a square that has not
-changed should not change colour: shading against the busiest day repaints the
-whole year the first time someone sits four sessions in an afternoon.
+Filled or empty because that is the question the screen exists to answer. A
+streak counts days, not sittings, so shading a day by how many sessions it held
+graded something no other number on the page cared about — and it cost a legend
+to explain a scale that was never read. Two states need no key. The same
+argument removed the days-practised count from the eyebrow: it is stated
+underneath at the size it deserves, and twice on one screen is once too many.
 
 ## Pros
 
@@ -76,10 +83,10 @@ whole year the first time someone sits four sessions in an afternoon.
 - Streaks are recomputed on every landing, and `new Date()` is read once when
   the screen mounts. A dashboard left open overnight shows yesterday's grid
   until it is reloaded.
-- Darkness tops out at three, so a ten-session Sunday looks the same as a
-  three-session one. The tooltip says the real number; the square does not.
+- A day of four sessions looks exactly like a day of one, so effort within a
+  day is invisible. Only the answer count in the day's label hints at it.
 - The window is a fixed year with no range control, so an older streak is
   visible only through the "longest" figure.
-- Four steps of one grey are a narrower scale than a hue would give, and the
-  lightest step had to be pushed darker than looked comfortable before it was
-  clearly not an empty day.
+- Two states carry less than a ramp could, so the graph is a calendar of
+  attendance rather than a picture of intensity. That is the trade taken
+  deliberately, and taking it back means reinstating a legend.

@@ -22,29 +22,19 @@ export interface ActivitySession {
   readonly answeredCount: number;
 }
 
-/**
- * How dark a day is drawn. Three steps above empty, on absolute session
- * counts rather than quartiles of the busiest day: relative shading repaints
- * the entire year the first time someone sits four sessions in an afternoon,
- * and a day that has not changed should not change colour. One sitting a day
- * is the honest unit of this habit, so one sitting earns the first step.
- */
-export type Level = 0 | 1 | 2 | 3;
-
-export function level(sessions: number): Level {
-  if (sessions <= 0) return 0;
-  if (sessions === 1) return 1;
-  if (sessions === 2) return 2;
-  return 3;
-}
-
 export interface HeatmapDay {
   readonly key: DayKey;
   /** Local midnight, for formatting the day's label. */
   readonly date: Date;
-  readonly sessions: number;
+  /**
+   * Whether the day was practised, which is the whole of what a square says.
+   * A day held one session or four; the map does not grade it. Sitting down
+   * is the habit, and how many times in one afternoon is a detail the streak
+   * does not turn on.
+   */
+  readonly practised: boolean;
+  /** How much was answered that day, for the day's own label. */
   readonly answers: number;
-  readonly level: Level;
 }
 
 /** A run of columns belonging to one month, for the labels along the top. */
@@ -72,8 +62,6 @@ export interface Heatmap {
   readonly to: Date;
   /** Totals over the window drawn, not over all history. */
   readonly daysPractised: number;
-  readonly sessions: number;
-  readonly answers: number;
   /**
    * Streaks over every session given, including any older than the window.
    * A streak the graph has scrolled past is still a streak that happened.
@@ -89,18 +77,16 @@ export function buildHeatmap(
   sessions: ReadonlyArray<ActivitySession>,
   { today, weeks = WEEKS }: { today: Date; weeks?: number },
 ): Heatmap {
-  const byDay = new Map<DayKey, { sessions: number; answers: number }>();
+  // Answers, by the day they were given on. A day is in this map if and only
+  // if it was practised, which is all a square needs to know.
+  const byDay = new Map<DayKey, number>();
   for (const session of sessions) {
     // A session nobody answered is not practice: the room was opened and left
     // again. Ending a session early is still practice, for the part that was
     // answered, which is the same line the report generator draws.
     if (session.answeredCount <= 0) continue;
     const key = dayKey(new Date(session.startedAt));
-    const day = byDay.get(key) ?? { sessions: 0, answers: 0 };
-    byDay.set(key, {
-      sessions: day.sessions + 1,
-      answers: day.answers + session.answeredCount,
-    });
+    byDay.set(key, (byDay.get(key) ?? 0) + session.answeredCount);
   }
 
   const to = dayStart(dayKey(today));
@@ -108,8 +94,6 @@ export function buildHeatmap(
 
   const grid: HeatmapWeek[] = [];
   let daysPractised = 0;
-  let totalSessions = 0;
-  let totalAnswers = 0;
 
   for (let week = 0; week < weeks; week += 1) {
     const column: Array<HeatmapDay | null> = [];
@@ -121,19 +105,13 @@ export function buildHeatmap(
         continue;
       }
       const key = dayKey(date);
-      const counts = byDay.get(key);
-      const dayCount = counts?.sessions ?? 0;
-      if (dayCount > 0) {
-        daysPractised += 1;
-        totalSessions += dayCount;
-        totalAnswers += counts?.answers ?? 0;
-      }
+      const answers = byDay.get(key);
+      if (answers !== undefined) daysPractised += 1;
       column.push({
         key,
         date,
-        sessions: dayCount,
-        answers: counts?.answers ?? 0,
-        level: level(dayCount),
+        practised: answers !== undefined,
+        answers: answers ?? 0,
       });
     }
     grid.push({ monday: addDays(from, week * 7), days: column });
@@ -147,8 +125,6 @@ export function buildHeatmap(
     from,
     to,
     daysPractised,
-    sessions: totalSessions,
-    answers: totalAnswers,
     currentStreak: current,
     longestStreak: longest,
   };
