@@ -3,7 +3,8 @@
 ## Decision
 
 Node 24.19.0 LTS, pinned in `.nvmrc` and in the root `engines` field.
-TypeScript 7.0.2. pnpm 11, pinned via `packageManager` and resolved by Corepack.
+TypeScript 7.0.2. pnpm 11, pinned via `packageManager`; pnpm itself reads the
+pin and fetches that version.
 
 `tsconfig.base.json` sets `module: "preserve"`, `moduleResolution: "bundler"`
 and `noEmit: true`. TypeScript is only a type checker; source is executed

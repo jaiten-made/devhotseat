@@ -10,12 +10,13 @@ no auth, no multi-tenancy and no hosted deployment: it runs locally.
 | Tool | Version |
 | ---- | ------- |
 | Node | 24.19.0 (see `.nvmrc`) |
-| pnpm | 11.22.0 (pinned via `packageManager`, provided by Corepack) |
+| pnpm | 11.22.0 (pinned via `packageManager`; pnpm fetches the pinned version itself) |
 | PostgreSQL | 16+, listening on 5432 |
 | Browser | Google Chrome. Speech recognition is a hosted service that Brave and some other Chromium builds ship without. |
 
 ```bash
-nvm install && nvm use && corepack enable
+nvm install && nvm use
+curl -fsSL https://get.pnpm.io/install.sh | sh -
 ```
 
 ## Setup
