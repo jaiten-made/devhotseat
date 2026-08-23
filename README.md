@@ -165,4 +165,8 @@ The reasoning behind each technical choice lives in [`docs/adr/`](docs/adr/).
 
 ## License
 
-[MIT](LICENSE).
+[GNU AGPL-3.0-only](LICENSE).
+
+Use it, change it, and run it privately without restriction. If you run a
+modified version as a service other people reach over a network, section 13
+requires you to offer them its source.
