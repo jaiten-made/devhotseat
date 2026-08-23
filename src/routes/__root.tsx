@@ -67,6 +67,7 @@ function RootDocument({ children }: { children: ReactNode }) {
                   Questions
                 </NavLink>
                 <NavLink to="/sessions">Sessions</NavLink>
+                <NavLink to="/dashboard">Dashboard</NavLink>
               </nav>
             </div>
           </header>

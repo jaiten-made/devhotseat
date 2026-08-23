@@ -80,3 +80,45 @@ export async function seedSessionWithProseOnlyReport(): Promise<string> {
     await p.end();
   }
 }
+
+/**
+ * Practice history on chosen days, for the dashboard's heatmap.
+ *
+ * Each entry is one session that many days ago, answered in full, so listing
+ * the same day twice is a day that held two sessions. `now()` minus an
+ * interval keeps the clock time and moves the date, which is what makes the
+ * seeded day land on the local day the browser will bucket it into.
+ */
+export async function seedPractice(
+  daysAgo: ReadonlyArray<number>,
+  answersPerSession = 2,
+): Promise<void> {
+  const p = pool();
+  try {
+    for (const offset of daysAgo) {
+      const session = await p.query<{ id: string }>(
+        `INSERT INTO sessions (question_count, started_at, ended_at)
+         VALUES ($1, now() - ($2 || ' days')::interval, now() - ($2 || ' days')::interval)
+         RETURNING id`,
+        [answersPerSession, offset],
+      );
+      const id = session.rows[0]?.id;
+      if (!id) throw new Error("Failed to seed a session.");
+      for (let position = 1; position <= answersPerSession; position += 1) {
+        await p.query(
+          `INSERT INTO turns (session_id, position, question_text, answer_text, answered_at)
+           VALUES ($1, $2, $3, $4, now() - ($5 || ' days')::interval)`,
+          [
+            id,
+            position,
+            `Seeded question ${position}?`,
+            `Seeded answer ${position}.`,
+            offset,
+          ],
+        );
+      }
+    }
+  } finally {
+    await p.end();
+  }
+}

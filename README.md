@@ -116,6 +116,11 @@ automatically when the browser has no speech support or the microphone is
 refused. A session you do not want to keep can be deleted from the **Sessions**
 list; its transcript and report go with it.
 
+**Dashboard** is the practice log read as a habit: a square a day for the last
+year, darker the more sessions that day held, with the current and longest
+streaks above it. A day counts once a session that started on it has been
+answered at all, and a streak is not broken by a day that is not over yet.
+
 ## Testing
 
 | Command | Layer | Covers |
@@ -148,7 +153,8 @@ pnpm lint
 | `src/routes` | TanStack Router file routes and the app shell |
 | `src/components/ui` | shadcn/ui components |
 | `src/components/interview` | The call screen: avatar, controls, transcript panel |
-| `src/lib` | Query keys, query options, and the voice loop |
+| `src/components/dashboard` | The streak heatmap and its numbers |
+| `src/lib` | Query keys, query options, the voice loop, and the practice heatmap |
 | `src/fn` | Server functions — the boundary the browser calls |
 | `src/server/services` | Question bank and session logic |
 | `src/server/session` | The interview state machine |
