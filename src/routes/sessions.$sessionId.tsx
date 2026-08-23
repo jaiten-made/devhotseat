@@ -797,7 +797,7 @@ function Transcript({ session }: { session: SessionDetail }) {
     <Page>
       <PageHeader
         eyebrow={new Date(session.startedAt).toLocaleString()}
-        title="Transcript"
+        title="Session review"
         description="Everything you were asked, everything you said, and the feedback written from it."
       />
 
