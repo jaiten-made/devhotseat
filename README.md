@@ -1,9 +1,10 @@
 # devhotseat
 
-An AI interview practice tool built for one person to run on their own machine.
-Add interview questions by hand, practise a session of them one turn at a time,
-then read the transcript and an AI-written feedback report afterwards. There is
-no auth, no multi-tenancy and no hosted deployment: it runs locally.
+An AI interview practice tool built for one person. Add interview questions by
+hand, practise a session of them one turn at a time, then read the transcript
+and an AI-written feedback report afterwards. There is no auth, no
+multi-tenancy and no hosted deployment: you start it yourself, and it reaches
+out to Google to transcribe your answers and write the report.
 
 ## Prerequisites
 
