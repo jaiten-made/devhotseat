@@ -33,7 +33,12 @@ export interface HeatmapDay {
    * does not turn on.
    */
   readonly practised: boolean;
-  /** How much was answered that day, for the day's own label. */
+  /**
+   * How much was answered that day. Nothing draws it: the map is about whether,
+   * not how much, and the tooltip names the date and stops. It is kept because
+   * it falls out of the bucketing for free and is what a per-day total would be
+   * read from if a screen ever wants one.
+   */
   readonly answers: number;
 }
 

@@ -89,13 +89,17 @@ export function StreakHeatmap({ heatmap }: { heatmap: Heatmap }) {
  * One day. The square is the hit target and carries its own tooltip, which is
  * what a grid of marks has instead of an axis to read against.
  *
+ * The tooltip names the date and stops there. Whether the day was practised is
+ * already on the screen — that is what the fill is — and a count of answers was
+ * a second number to read in a graph that is about one thing: did I sit down.
+ *
  * Only a day that was practised is spoken. Announcing all three hundred and
  * seventy squares would read out "no practice on" three hundred times to say
  * what the streak numbers above already say in two.
  */
 function Cell({ day }: { day: HeatmapDay | null }) {
   if (!day) return <td />;
-  const label = describeDay(day);
+  const label = DAY.format(day.date);
   return (
     <td className="p-0">
       <div
@@ -117,14 +121,4 @@ function weekdayRows(from: Date): Array<{ row: number; date: Date }> {
     row,
     date: addDays(from, row),
   }));
-}
-
-function describeDay(day: HeatmapDay): string {
-  const date = DAY.format(day.date);
-  if (!day.practised) return `No practice on ${date}`;
-  return `${count(day.answers, "answer")} on ${date}`;
-}
-
-function count(value: number, noun: string): string {
-  return `${value} ${noun}${value === 1 ? "" : "s"}`;
 }
