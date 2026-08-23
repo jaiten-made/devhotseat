@@ -818,7 +818,7 @@ function Transcript({ session }: { session: SessionDetail }) {
         )}
       </Section>
 
-      <Section title="The full exchange">
+      <Section title="Transcript">
         {/* Numbered, because the turns are a sequence and the report above
             refers back to them by position. */}
         <ol className="space-y-3">
