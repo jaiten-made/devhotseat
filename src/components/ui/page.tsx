@@ -24,43 +24,50 @@ export function Page({ children }: { children: ReactNode }) {
 }
 
 /**
- * The top of a screen, in the same shape every time: what kind of screen this
- * is, what it is called, and what it is for. The eyebrow is the section of the
- * app you are standing in, which is also what the nav has highlighted — saying
- * it twice is what makes a full-viewport screen like the interview room, with
- * no nav to highlight, still feel like part of the app.
+ * The top of a screen, in the same shape every time: what it is called, what
+ * it is for, and where it currently stands.
+ *
+ * The screen used to name its own section above the title, in the same small
+ * capitals the nav sets its links in — so every page opened by repeating the
+ * word already underlined two inches up. What that line actually carried was
+ * the screen's one fact: how many questions, how many sessions, when this
+ * session was sat. So it moved to the trailing edge of the title line, where
+ * it reads as a figure attached to the heading rather than a label above it,
+ * and wraps underneath on a narrow viewport instead of squeezing the title.
  *
  * The title is cast in headline capitals here rather than at each call site,
- * so a route cannot spell one differently from the next. The eyebrow is left
+ * so a route cannot spell one differently from the next. The meta is left
  * alone: it is as often a count or a timestamp as it is a phrase.
  */
 export function PageHeader({
-  eyebrow,
   title,
+  meta,
   description,
   actions,
 }: {
-  eyebrow: string;
   title: string;
+  meta?: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
 }) {
   return (
     <header className="border-b border-rule pb-6">
-      <div className="flex items-start justify-between gap-6">
-        <div className="min-w-0">
-          <p className="field-label">{eyebrow}</p>
-          <h1 className="mt-2.5 text-[1.75rem] font-semibold leading-none">
-            {titleCase(title)}
-          </h1>
-          {description && (
-            <p className="mt-3 max-w-prose text-[0.9375rem] leading-relaxed text-ink-muted">
-              {description}
-            </p>
-          )}
-        </div>
-        {actions && <div className="shrink-0">{actions}</div>}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+        <h1 className="min-w-0 text-[1.75rem] font-semibold leading-none">
+          {titleCase(title)}
+        </h1>
+        {(meta || actions) && (
+          <div className="flex shrink-0 items-baseline gap-4">
+            {meta && <p className="field-label">{meta}</p>}
+            {actions && <div className="self-center">{actions}</div>}
+          </div>
+        )}
       </div>
+      {description && (
+        <p className="mt-3 max-w-prose text-[0.9375rem] leading-relaxed text-ink-muted">
+          {description}
+        </p>
+      )}
     </header>
   );
 }

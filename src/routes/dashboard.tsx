@@ -42,11 +42,10 @@ function Dashboard() {
   // still recognisably this screen.
   const header = (
     <PageHeader
-      // The other two screens count their rows here. This one does not: the
-      // days practised are already stated underneath, at the size the number
-      // deserves, and saying it twice above the title only made the header
-      // argue with the panel below it.
-      eyebrow="Practice log"
+      // The other two screens state a count beside the title. This one does
+      // not: the days practised are already stated underneath, at the size the
+      // number deserves, and saying it twice only made the header argue with
+      // the panel below it.
       title="Dashboard"
       description="How often you sit in the hot seat."
     />

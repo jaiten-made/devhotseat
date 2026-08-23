@@ -82,7 +82,7 @@ function SessionView() {
   if (session.isPending) {
     return (
       <Page>
-        <PageHeader eyebrow="Loading" title="Session" />
+        <PageHeader title="Session" />
         <Notice>Loading session…</Notice>
       </Page>
     );
@@ -90,7 +90,7 @@ function SessionView() {
   if (session.isError) {
     return (
       <Page>
-        <PageHeader eyebrow="Unavailable" title="Session" />
+        <PageHeader title="Session" />
         <Notice tone="destructive" role="alert">
           Could not load this session: {session.error.message}
         </Notice>
@@ -100,7 +100,7 @@ function SessionView() {
   if (session.data === null) {
     return (
       <Page>
-        <PageHeader eyebrow="Not found" title="Session" />
+        <PageHeader title="Session" />
         <Notice>
           That session does not exist.{" "}
           <Link
@@ -206,20 +206,18 @@ function Room({
     <div className="fixed inset-0 z-50 flex bg-paper">
       <div className="flex min-w-0 flex-1 flex-col">
         {/*
-          The same eyebrow-over-title the app's other screens lead with. The
-          room covers the nav, so this header is the only thing left saying
-          where you are — which is exactly the job the eyebrow does elsewhere.
+          Title first, progress on the trailing edge: the same order the app's
+          page headers read in. The room covers the nav, so this header is the
+          only thing left saying where you are, and how far in.
         */}
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-rule px-4">
-          <div className="min-w-0 flex-1">
-            <p className="field-label truncate">
-              {subtitle ??
-                `Question ${session.currentPosition} of ${session.questionCount}`}
-            </p>
-            <p className="mt-1 truncate text-sm font-semibold leading-none">
-              Interview session
-            </p>
-          </div>
+        <header className="flex h-14 shrink-0 items-center gap-4 border-b border-rule px-4">
+          <p className="min-w-0 flex-1 truncate text-sm font-semibold leading-none">
+            Interview session
+          </p>
+          <p className="field-label shrink-0">
+            {subtitle ??
+              `Question ${session.currentPosition} of ${session.questionCount}`}
+          </p>
           <EndInterview
             session={session}
             onConfirm={() => end.mutate()}
@@ -796,8 +794,10 @@ function Transcript({ session }: { session: SessionDetail }) {
   return (
     <Page>
       <PageHeader
-        eyebrow={new Date(session.startedAt).toLocaleString()}
         title="Session review"
+        // Which session this is, in the same face the list sets its timestamps
+        // in — the one fact the title cannot carry.
+        meta={new Date(session.startedAt).toLocaleString()}
         description="Everything you were asked, everything you said, and the feedback written from it."
       />
 

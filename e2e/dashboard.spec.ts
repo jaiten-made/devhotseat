@@ -25,7 +25,7 @@ test("a run of days reads as a current streak, and a gap ends the last one", asy
   await page.goto("/dashboard");
 
   // Located by the term rather than by its text: "Days practised" also
-  // appears in the header's eyebrow and in the table's caption.
+  // appears in the heatmap table's caption.
   const stat = (label: string) =>
     page.getByRole("term").filter({ hasText: label }).locator("..");
 

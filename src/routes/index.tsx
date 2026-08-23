@@ -33,9 +33,9 @@ export const Route = createFileRoute("/")({
   component: QuestionBank,
 });
 
-/** The eyebrow is the screen's one number, so the header states the size of
- *  the bank without a row of it having to be counted. */
-function bankEyebrow(count: number): string {
+/** The header's one number, so the size of the bank is stated without a row
+ *  of it having to be counted. */
+function bankCount(count: number): string {
   if (count === 0) return "Nothing in the bank";
   return `${count} ${count === 1 ? "question" : "questions"} in the bank`;
 }
@@ -79,12 +79,11 @@ function QuestionBank() {
   // itself around the content once the query lands.
   const header = (
     <PageHeader
-      eyebrow={
-        questions.isSuccess
-          ? bankEyebrow(questions.data.length)
-          : "Question set"
-      }
       title="Question bank"
+      // Only once the bank has landed. It sits beside the title rather than
+      // above it, so arriving at the count adds nothing to the header's
+      // height and the screen does not shuffle down when the query returns.
+      meta={questions.isSuccess ? bankCount(questions.data.length) : undefined}
       description="A session asks every question here, in random order. Add as many as you like."
     />
   );

@@ -34,7 +34,7 @@ type SessionRow = Awaited<
   ReturnType<typeof import("@/fn/sessions").fetchSessions>
 >[number];
 
-function listEyebrow(count: number): string {
+function listCount(count: number): string {
   if (count === 0) return "Nothing recorded";
   return `${count} ${count === 1 ? "session" : "sessions"}`;
 }
@@ -55,10 +55,8 @@ function SessionList() {
   // still recognisably this screen.
   const header = (
     <PageHeader
-      eyebrow={
-        sessions.isSuccess ? listEyebrow(sessions.data.length) : "Session log"
-      }
       title="Sessions"
+      meta={sessions.isSuccess ? listCount(sessions.data.length) : undefined}
       description="Every interview you have practised, newest first. Open one to read its transcript and feedback."
     />
   );
