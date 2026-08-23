@@ -6,16 +6,28 @@ and an AI-written feedback report afterwards. There is no auth, no
 multi-tenancy and no hosted deployment: you start it yourself, and it reaches
 out to Google to transcribe your answers and write the report.
 
-![The interview room mid-answer, the spoken answer being transcribed under the question, with the answers so far beside it](docs/screenshots/interview-room.png)
+<table>
+<tr>
+<td width="50%"><img width="360" alt="The interview room mid-answer: the question on the stage, the spoken answer being transcribed under it, and the answers so far in a panel beside it" src="docs/screenshots/interview-room.png"></td>
+<td width="50%"><img width="360" alt="The top of a finished session's report: a one-line verdict, an overall score out of four, and the five STAR-L pillars drawn as a radar beside a weighted table" src="docs/screenshots/feedback-scores.png"></td>
+</tr>
+<tr>
+<td><sub><b>The room.</b> A session runs as a call: one question read aloud, your spoken answer transcribed, then the turn handed back.</sub></td>
+<td><sub><b>What it scored.</b> Every answer is marked against the STAR-L rubric, and the shape says which pillar let you down.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img width="360" alt="The written half of the same report: a coaching note in prose, then the first answer's card with its five pillar scores, what was strongest about it and what to do differently" src="docs/screenshots/feedback-notes.png"></td>
+<td width="50%"><img width="360" alt="The dashboard: current streak, longest streak and days practised, above a year of squares filled in for every day practised" src="docs/screenshots/practice-dashboard.png"></td>
+</tr>
+<tr>
+<td><sub><b>What it wrote.</b> The same session in sentences: where the answers were thin, then a card for each one.</sub></td>
+<td><sub><b>The practice log.</b> A square a day for the last year, and the run you are on.</sub></td>
+</tr>
+</table>
 
-A session runs as a call: one question read aloud, your spoken answer
-transcribed, then the turn handed back.
-
-![A finished session's report: leaning hire, 2.9 out of 4, broken down by STAR-L pillar](docs/screenshots/feedback-report.png)
-
-Afterwards it scores what you said against the STAR-L rubric, pillar by pillar,
-and writes up where the answers were thin — down to a card per answer, which
-[the whole report](docs/screenshots/feedback-report-full.png) shows.
+[The whole report](docs/screenshots/feedback-report-full.png) carries on past
+that third tile: a card for every answer, then the transcript it was written
+from.
 
 ## Prerequisites
 
