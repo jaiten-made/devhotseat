@@ -11,7 +11,7 @@ no auth, no multi-tenancy and no hosted deployment: it runs locally.
 | ---- | ------- |
 | Node | 24.19.0 (see `.nvmrc`) |
 | pnpm | 11.22.0 (pinned via `packageManager`; pnpm fetches the pinned version itself) |
-| PostgreSQL | 16+, listening on 5432 |
+| Docker | Any version with Compose v2, to run Postgres. A PostgreSQL 16+ installed on the host works instead. |
 | Browser | Google Chrome. Speech recognition is a hosted service that Brave and some other Chromium builds ship without. |
 
 ```bash
@@ -27,52 +27,66 @@ From the repository root:
 pnpm install
 ```
 
-Create the database role and both databases:
-
-### macOS (Homebrew)
+### 1. Start the database
 
 ```bash
-# 1. Install and start PostgreSQL
+docker compose up -d --wait
+```
+
+That creates the `devhotseat` role, the dev database and the test database, and
+returns once Postgres is accepting connections. The port is bound to localhost
+only. Data sits in a named volume and outlives `docker compose down`; to throw
+the transcripts away and start clean, use `docker compose down -v`.
+
+<details>
+<summary>Or use a PostgreSQL installed on the host</summary>
+
+Skip the compose file and create the role and both databases yourself.
+
+**macOS (Homebrew)**
+
+```bash
 brew install postgresql@18
 brew services start postgresql@18
-
-# 2. Ensure psql is available in PATH
 export PATH="/opt/homebrew/opt/postgresql@18/bin:$PATH"
 
-# 3. Create role and databases
-psql postgres -c "CREATE ROLE devhotseat LOGIN PASSWORD 'devhotseat' SUPERUSER;"
+psql postgres -c "CREATE ROLE devhotseat LOGIN PASSWORD 'devhotseat';"
 psql postgres -c "CREATE DATABASE devhotseat OWNER devhotseat;"
 psql postgres -c "CREATE DATABASE devhotseat_test OWNER devhotseat;"
 ```
 
-### Linux (Debian / Ubuntu)
+**Linux (Debian / Ubuntu)**
 
 ```bash
-# 1. Start PostgreSQL service
 sudo systemctl enable --now postgresql@18-main
 
-# 2. Create role and databases
 sudo -u postgres psql -p 5432 -c "CREATE ROLE devhotseat LOGIN PASSWORD 'devhotseat';"
 sudo -u postgres createdb -p 5432 -O devhotseat devhotseat
 sudo -u postgres createdb -p 5432 -O devhotseat devhotseat_test
 ```
 
-Copy the environment template. Adjust the connection strings if you changed
-anything above, and set `GEMINI_API_KEY` to a Google Gemini API key — feedback
-report generation needs it:
+</details>
+
+### 2. Fill in the environment
 
 ```bash
 cp .env.example .env
 ```
 
-Apply the migrations, to the dev database and then to the test one the
-integration and e2e suites use:
+Set `GEMINI_API_KEY` to a Google Gemini API key — feedback report generation
+needs it. Adjust the connection strings only if you changed something above.
+
+### 3. Apply the migrations
+
+To the dev database, and then to the test one the integration and e2e suites
+use:
 
 ```bash
 pnpm db:migrate
 ```
 
 ```bash
+set -a; . ./.env; set +a
 DATABASE_URL="$TEST_DATABASE_URL" pnpm db:migrate
 ```
 
@@ -142,6 +156,7 @@ pnpm lint
 | `src/server/ai` | Report generator and its prompt |
 | `migrations` | Generated SQL migrations |
 | `e2e` | Playwright specs |
+| `docker` | Postgres init script run by `compose.yaml` |
 | `docs/adr` | Decision records |
 
 ## Decisions
