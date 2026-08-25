@@ -13,4 +13,5 @@ export const queryKeys = {
   questions: ["questions"] as const,
   sessions: ["sessions"] as const,
   session: (id: string) => ["sessions", id] as const,
+  aiStatus: ["ai-status"] as const,
 };

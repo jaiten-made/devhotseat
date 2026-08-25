@@ -5,17 +5,25 @@ import { z } from "zod";
 // `pnpm dev` and the test runners.
 config();
 
+export type AIProvider = "local" | "gemini";
+
 const schema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-  GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY is required"),
+  GEMINI_API_KEY: z.string().optional().default(""),
+  AI_PROVIDER: z.enum(["local", "gemini"]).optional(),
+  LOCAL_AI_BASE_URL: z.string().optional().default("http://localhost:11434"),
+  LOCAL_AI_MODEL: z.string().optional().default("llama3.2"),
+  GEMINI_MODEL: z.string().optional().default("gemini-3.5-flash-lite"),
 });
+
+export type EnvConfig = z.infer<typeof schema>;
 
 /**
  * Validated environment. Throws with the names of the missing variables rather
  * than letting `undefined` reach the database driver or the AI client and fail
  * as something more confusing later.
  */
-export function loadEnv(source: NodeJS.ProcessEnv = process.env) {
+export function loadEnv(source: NodeJS.ProcessEnv = process.env): EnvConfig {
   const result = schema.safeParse(source);
   if (!result.success) {
     const problems = result.error.issues

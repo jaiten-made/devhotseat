@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/page";
 import { createQuestion, removeQuestion } from "@/fn/questions";
 import { startSession } from "@/fn/sessions";
+import { useAiPreference } from "@/lib/ai-preference";
 import { questionsQuery } from "@/lib/queries";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -43,6 +44,7 @@ function bankCount(count: number): string {
 function QuestionBank() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { effectiveProvider, status } = useAiPreference();
   // UI state only: the field being typed into.
   const [text, setText] = useState("");
 
@@ -205,16 +207,24 @@ function QuestionBank() {
         for, so "Add" is outlined and this is not.
       */}
       <Panel className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-ink-muted">
-          {canStart ? (
-            <>
-              This session will ask {upcomingLength}{" "}
-              {upcomingLength === 1 ? "question" : "questions"}.
-            </>
-          ) : (
-            "Add at least one question to start a session."
-          )}
-        </p>
+        <div className="space-y-1">
+          <p className="text-sm text-ink-muted">
+            {canStart ? (
+              <>
+                This session will ask {upcomingLength}{" "}
+                {upcomingLength === 1 ? "question" : "questions"}.
+              </>
+            ) : (
+              "Add at least one question to start a session."
+            )}
+          </p>
+          <p className="text-xs text-ink-faint font-mono">
+            Scoring:{" "}
+            {effectiveProvider === "local"
+              ? `Local AI (${status?.localAi.model ?? "llama3.2"}${status?.localAi.isReachable === false ? " — offline" : ""})`
+              : `Gemini (${status?.geminiModel ?? "gemini-3.5-flash-lite"})`}
+          </p>
+        </div>
         <Button
           size="lg"
           className="shrink-0"

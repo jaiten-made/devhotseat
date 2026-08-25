@@ -97,8 +97,17 @@ sudo -u postgres createdb -p 5432 -O devhotseat devhotseat_test
 cp .env.example .env
 ```
 
-Set `GEMINI_API_KEY` to a Google Gemini API key — feedback report generation
-needs it. Adjust the connection strings only if you changed something above.
+`devhotseat` works with **Local AI** (via Ollama or LM Studio) or **Google Gemini**:
+
+- **Local AI (Offline / Private, Default)**: Install [Ollama](https://ollama.com/) and pull a model:
+  ```bash
+  ollama run llama3.2
+  ```
+  No API key required.
+
+- **Google Gemini API (Higher quality feedback)**: Set `GEMINI_API_KEY` in `.env`.
+
+You can switch between Local AI and Gemini at any time using the toggle in the app header or by editing `AI_PROVIDER` in `.env`.
 
 ### 3. Apply the migrations
 

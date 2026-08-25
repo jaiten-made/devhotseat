@@ -42,12 +42,18 @@ export const startSession = createServerFn({ method: "POST" }).handler(
  * the report, both decided by the state machine.
  */
 export const answerTurn = createServerFn({ method: "POST" })
-  .validator(z.object({ id: z.uuid(), answer: z.string().trim().min(1) }))
+  .validator(
+    z.object({
+      id: z.uuid(),
+      answer: z.string().trim().min(1),
+      aiProvider: z.enum(["local", "gemini"]).optional(),
+    }),
+  )
   .handler(async ({ data }) => {
     const db = getDb();
     const result = await submitAnswer(
       db,
-      getReportGenerator(),
+      getReportGenerator(data.aiProvider),
       data.id,
       data.answer,
     );
@@ -62,10 +68,19 @@ export const answerTurn = createServerFn({ method: "POST" })
  * report is written on the answers given so far. Nothing is left running.
  */
 export const leaveSession = createServerFn({ method: "POST" })
-  .validator(z.object({ id: z.uuid() }))
+  .validator(
+    z.object({
+      id: z.uuid(),
+      aiProvider: z.enum(["local", "gemini"]).optional(),
+    }),
+  )
   .handler(async ({ data }) => {
     const db = getDb();
-    const result = await endSession(db, getReportGenerator(), data.id);
+    const result = await endSession(
+      db,
+      getReportGenerator(data.aiProvider),
+      data.id,
+    );
     if (result === null)
       return { ok: false as const, reason: "not_found" as const };
     if (!result.ok) return { ok: false as const, reason: result.reason };

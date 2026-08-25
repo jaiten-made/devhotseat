@@ -8,6 +8,7 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { lazy, type ReactNode, Suspense } from "react";
+import { AiProviderToggle } from "../components/ui/ai-provider-toggle";
 import appCss from "../styles/app.css?url";
 
 export interface RouterContext {
@@ -53,7 +54,7 @@ function RootDocument({ children }: { children: ReactNode }) {
             with no way back to the sessions.
           */}
           <header className="sticky top-0 z-40 border-b border-rule bg-paper/85 backdrop-blur">
-            <div className="mx-auto flex h-14 max-w-3xl items-stretch gap-8 px-6">
+            <div className="mx-auto flex h-14 max-w-3xl items-center gap-8 px-6">
               <Link
                 to="/"
                 className="flex items-center text-[0.9375rem] font-semibold tracking-tight"
@@ -62,13 +63,16 @@ function RootDocument({ children }: { children: ReactNode }) {
                 <span className="text-ink-faint">dev</span>
                 <span>hotseat</span>
               </Link>
-              <nav className="flex items-stretch gap-6">
+              <nav className="flex h-14 items-stretch gap-6">
                 <NavLink to="/" exact>
                   Questions
                 </NavLink>
                 <NavLink to="/sessions">Sessions</NavLink>
                 <NavLink to="/dashboard">Dashboard</NavLink>
               </nav>
+              <div className="ml-auto flex items-center">
+                <AiProviderToggle />
+              </div>
             </div>
           </header>
 

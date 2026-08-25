@@ -5,6 +5,11 @@ import { parseReportResponse } from "./parse";
 import { buildPrompt, loadPromptTemplate, type TranscriptTurn } from "./prompt";
 import { REPORT_JSON_SCHEMA } from "./response-schema";
 
+export {
+  createLocalReportGenerator,
+  type LocalReportGeneratorOptions,
+} from "./local";
+
 export interface GeneratedReport {
   readonly content: string;
   /** The scored rubric, or null when only the prose came back usable. */

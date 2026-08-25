@@ -1,7 +1,11 @@
-import { createGeminiReportGenerator, type ReportGenerator } from "./ai/client";
+import {
+  createGeminiReportGenerator,
+  createLocalReportGenerator,
+  type ReportGenerator,
+} from "./ai/client";
 import { createStubReportGenerator } from "./ai/stub";
 import { createDatabase, type Database } from "./db";
-import { loadEnv } from "./env";
+import { type AIProvider, loadEnv } from "./env";
 
 let database: Database | undefined;
 let reportGenerator: ReportGenerator | undefined;
@@ -30,12 +34,40 @@ export function getDb(): Database {
   return database;
 }
 
-export function getReportGenerator(): ReportGenerator {
-  if (!reportGenerator) {
-    reportGenerator =
-      process.env.HOTSEAT_STUB_REPORTS === "1"
-        ? createStubReportGenerator()
-        : createGeminiReportGenerator({ apiKey: loadEnv().GEMINI_API_KEY });
+export function resolveAiProvider(preference?: AIProvider): AIProvider {
+  if (preference) return preference;
+  const env = loadEnv();
+  if (env.AI_PROVIDER) return env.AI_PROVIDER;
+  if (env.GEMINI_API_KEY.trim() !== "") return "gemini";
+  return "local";
+}
+
+export function getReportGenerator(preference?: AIProvider): ReportGenerator {
+  if (reportGenerator) {
+    return reportGenerator;
   }
-  return reportGenerator;
+  if (process.env.HOTSEAT_STUB_REPORTS === "1") {
+    reportGenerator = createStubReportGenerator();
+    return reportGenerator;
+  }
+
+  const env = loadEnv();
+  const provider = resolveAiProvider(preference);
+
+  if (provider === "gemini") {
+    if (env.GEMINI_API_KEY.trim() === "") {
+      throw new Error(
+        "GEMINI_API_KEY is not configured in .env. Switch to Local AI or provide a Gemini API key.",
+      );
+    }
+    return createGeminiReportGenerator({
+      apiKey: env.GEMINI_API_KEY,
+      model: env.GEMINI_MODEL,
+    });
+  }
+
+  return createLocalReportGenerator({
+    baseUrl: env.LOCAL_AI_BASE_URL,
+    model: env.LOCAL_AI_MODEL,
+  });
 }

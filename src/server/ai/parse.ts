@@ -39,14 +39,36 @@ function truncate(value: string): string {
 }
 
 /**
- * Tidies what the model returned: trims every string, caps the notes, and puts
- * the turns back in position order. Scores are already bounded by the schema.
+ * Tidies what the model returned: trims every string, caps the notes, filters
+ * down to expected positions (if all expected positions are covered), and puts
+ * the turns back in position order.
  */
-function normalise(report: StructuredReport): StructuredReport {
+function normalise(
+  report: StructuredReport,
+  expected?: ReadonlyArray<number>,
+): StructuredReport {
+  let turnsToProcess = report.turns;
+  if (expected && expected.length > 0) {
+    const expectedSet = new Set(expected);
+    const hasAllExpected = expected.every((pos) =>
+      report.turns.some((t) => t.position === pos),
+    );
+    if (hasAllExpected) {
+      const seen = new Set<number>();
+      turnsToProcess = report.turns.filter((t) => {
+        if (expectedSet.has(t.position) && !seen.has(t.position)) {
+          seen.add(t.position);
+          return true;
+        }
+        return false;
+      });
+    }
+  }
+
   return {
     headline: truncate(report.headline),
     narrative: report.narrative.trim(),
-    turns: [...report.turns]
+    turns: [...turnsToProcess]
       .sort((a, b) => a.position - b.position)
       .map((turn) => ({
         position: turn.position,
@@ -127,7 +149,7 @@ export function parseReportResponse(
 
   const parsed = structuredReportSchema.safeParse(json);
   if (parsed.success) {
-    const report = normalise(parsed.data);
+    const report = normalise(parsed.data, expectedPositions);
     if (report.narrative !== "" && coversExactly(report, expectedPositions)) {
       return { content: report.narrative, structured: report };
     }
