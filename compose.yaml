@@ -1,12 +1,25 @@
-# Local Postgres for development and tests. The app itself is not containerised:
-# it runs on the host with `pnpm dev`, because the Vite dev server and the
-# Playwright suite both expect a native toolchain.
-#
-# These credentials are deliberately weak and committed. The port is bound to
-# the loopback address only, so nothing here is reachable off this machine.
 services:
+  app:
+    build: .
+    container_name: devhotseat-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://devhotseat:devhotseat@postgres:5432/devhotseat
+      AI_PROVIDER: ${AI_PROVIDER:-local}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      LOCAL_AI_BASE_URL: ${LOCAL_AI_BASE_URL:-http://host.docker.internal:11434}
+      LOCAL_AI_MODEL: ${LOCAL_AI_MODEL:-llama3.2}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
   postgres:
-    image: postgres:18-alpine
+    image: postgres:17-alpine
     container_name: devhotseat-postgres
     restart: unless-stopped
     environment:
@@ -16,14 +29,9 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
-      # Postgres 18+ images keep data in a major-version subdirectory, so the
-      # mount goes at /var/lib/postgresql, not /var/lib/postgresql/data.
-      - devhotseat-pgdata:/var/lib/postgresql
-      # Runs once, on an empty data directory only.
+      - devhotseat-pgdata:/var/lib/postgresql/data
       - ./docker/init-test-db.sql:/docker-entrypoint-initdb.d/10-init-test-db.sql:ro
     healthcheck:
-      # `docker compose up -d --wait` blocks until this passes, so migrations
-      # can run on the next line without a sleep.
       test: ["CMD-SHELL", "pg_isready -U devhotseat -d devhotseat"]
       interval: 2s
       timeout: 3s

@@ -125,8 +125,25 @@ DATABASE_URL="$TEST_DATABASE_URL" pnpm db:migrate
 
 ## Running it
 
+### Option 1: Docker (One-command practice mode)
+
+Spins up the full stack (Postgres + Production App) in background containers, automatically applying database migrations:
+
 ```bash
-pnpm dev
+docker compose up -d --build
+```
+
+The app is served at http://localhost:3000. When you are finished studying, shut down the containers (your database data persists in the volume):
+
+```bash
+docker compose down
+```
+
+### Option 2: Local Development
+
+```bash
+docker compose up -d --wait # Starts dev database
+pnpm dev                    # Starts Vite dev server
 ```
 
 The app is served at http://localhost:3000. Add questions on the first page,

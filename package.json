@@ -11,6 +11,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
+    "start": "srvx --prod -s ../client dist/server/server.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "test": "pnpm test:unit && pnpm test:integration && pnpm test:e2e",
@@ -39,6 +40,7 @@
     "radix-ui": "^1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "srvx": "^0.12.7",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "4.3.3",
     "zod": "4.4.3"

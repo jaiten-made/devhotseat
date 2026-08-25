@@ -59,6 +59,9 @@ importers:
       react-dom:
         specifier: 19.2.8
         version: 19.2.8(react@19.2.8)
+      srvx:
+        specifier: ^0.12.7
+        version: 0.12.7
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
@@ -2929,6 +2932,11 @@ packages:
     engines: {node: '>=20.16.0'}
     hasBin: true
 
+  srvx@0.12.7:
+    resolution: {integrity: sha512-PIaq1pDGg3EU2OGSN3pzRfYVu9MJDzLdojlGN6E3lvhAdxqn/lNMJFMA1xGA38jYkBb0V9xw02QEVVMDb0PExA==}
+    engines: {node: '>=20.16.0'}
+    hasBin: true
+
   stackback@0.0.2:
     resolution: {integrity: sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==}
 
@@ -5746,6 +5754,8 @@ snapshots:
   split2@4.2.0: {}
 
   srvx@0.11.22: {}
+
+  srvx@0.12.7: {}
 
   stackback@0.0.2: {}
 
