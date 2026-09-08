@@ -3,6 +3,7 @@ import {
   createLocalReportGenerator,
   type ReportGenerator,
 } from "./ai/client";
+import { resolveModelId } from "./ai/models";
 import { createStubReportGenerator } from "./ai/stub";
 import { createDatabase, type Database } from "./db";
 import { type AIProvider, loadEnv } from "./env";
@@ -42,7 +43,23 @@ export function resolveAiProvider(preference?: AIProvider): AIProvider {
   return "local";
 }
 
-export function getReportGenerator(preference?: AIProvider): ReportGenerator {
+/** What the browser asked a report to be written with. Both parts optional. */
+export interface AiSelection {
+  readonly provider?: AIProvider;
+  readonly model?: string;
+}
+
+/**
+ * Builds the generator for one report.
+ *
+ * The model arrives from the browser, so it goes through `resolveModelId`
+ * rather than straight into the request: an id that is not shaped like a model
+ * id falls back to the configured default instead of being interpolated into a
+ * provider URL.
+ */
+export function getReportGenerator(
+  selection: AiSelection = {},
+): ReportGenerator {
   if (reportGenerator) {
     return reportGenerator;
   }
@@ -52,7 +69,7 @@ export function getReportGenerator(preference?: AIProvider): ReportGenerator {
   }
 
   const env = loadEnv();
-  const provider = resolveAiProvider(preference);
+  const provider = resolveAiProvider(selection.provider);
 
   if (provider === "gemini") {
     if (env.GEMINI_API_KEY.trim() === "") {
@@ -62,12 +79,12 @@ export function getReportGenerator(preference?: AIProvider): ReportGenerator {
     }
     return createGeminiReportGenerator({
       apiKey: env.GEMINI_API_KEY,
-      model: env.GEMINI_MODEL,
+      model: resolveModelId(selection.model, env.GEMINI_MODEL),
     });
   }
 
   return createLocalReportGenerator({
     baseUrl: env.LOCAL_AI_BASE_URL,
-    model: env.LOCAL_AI_MODEL,
+    model: resolveModelId(selection.model, env.LOCAL_AI_MODEL),
   });
 }

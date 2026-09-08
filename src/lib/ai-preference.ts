@@ -1,59 +1,87 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import type { AIProvider } from "@/server/env";
+import {
+  isProvider,
+  MODEL_KEY,
+  type ModelChoices,
+  PROVIDER_KEY,
+  parseModelChoices,
+  resolveEffectiveModel,
+} from "./ai-model-choice";
 import { aiStatusQuery } from "./queries";
 
-const STORAGE_KEY = "devhotseat_ai_provider";
-const PREFERENCE_EVENT = "devhotseat_ai_provider_change";
+const PREFERENCE_EVENT = "devhotseat_ai_preference_change";
 
+function readProvider(): AIProvider | null {
+  if (typeof window === "undefined") return null;
+  const saved = localStorage.getItem(PROVIDER_KEY);
+  return isProvider(saved) ? saved : null;
+}
+
+function readModels(): ModelChoices {
+  if (typeof window === "undefined") return {};
+  return parseModelChoices(localStorage.getItem(MODEL_KEY));
+}
+
+/**
+ * The provider and model the next report should be written with, and the
+ * status the picker renders. Both halves of the choice are the browser's, so
+ * they travel with each request rather than being held on the server.
+ */
 export function useAiPreference() {
   const statusQuery = useQuery(aiStatusQuery());
 
-  const [storedPreference, setStoredPreference] = useState<AIProvider | null>(
-    () => {
-      if (typeof window === "undefined") return null;
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved === "local" || saved === "gemini" ? saved : null;
-    },
+  const [provider, setStoredProvider] = useState<AIProvider | null>(
+    readProvider,
   );
+  const [models, setStoredModels] = useState<ModelChoices>(readModels);
 
   useEffect(() => {
-    const handleStorage = (event: Event) => {
-      const customEvent = event as CustomEvent<AIProvider>;
-      if (customEvent.detail) {
-        setStoredPreference(customEvent.detail);
-      } else {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        setStoredPreference(
-          saved === "local" || saved === "gemini" ? saved : null,
-        );
-      }
+    // Both the in-tab event and the cross-tab `storage` event re-read from
+    // localStorage, so a second window showing the picker stays in step.
+    const sync = () => {
+      setStoredProvider(readProvider());
+      setStoredModels(readModels());
     };
 
-    window.addEventListener(PREFERENCE_EVENT, handleStorage);
-    window.addEventListener("storage", handleStorage);
+    window.addEventListener(PREFERENCE_EVENT, sync);
+    window.addEventListener("storage", sync);
     return () => {
-      window.removeEventListener(PREFERENCE_EVENT, handleStorage);
-      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(PREFERENCE_EVENT, sync);
+      window.removeEventListener("storage", sync);
     };
   }, []);
 
-  const setPreference = useCallback((newPref: AIProvider) => {
-    localStorage.setItem(STORAGE_KEY, newPref);
-    setStoredPreference(newPref);
-    window.dispatchEvent(
-      new CustomEvent(PREFERENCE_EVENT, { detail: newPref }),
-    );
+  const setProvider = useCallback((next: AIProvider) => {
+    localStorage.setItem(PROVIDER_KEY, next);
+    window.dispatchEvent(new Event(PREFERENCE_EVENT));
   }, []);
 
-  const serverDefault = statusQuery.data?.activeProvider ?? "local";
-  const effectiveProvider: AIProvider = storedPreference ?? serverDefault;
+  const setModel = useCallback((target: AIProvider, model: string) => {
+    const next = { ...readModels(), [target]: model };
+    localStorage.setItem(MODEL_KEY, JSON.stringify(next));
+    window.dispatchEvent(new Event(PREFERENCE_EVENT));
+  }, []);
+
+  const status = statusQuery.data;
+  const effectiveProvider: AIProvider =
+    provider ?? status?.activeProvider ?? "local";
+  const activeStatus =
+    effectiveProvider === "gemini" ? status?.gemini : status?.local;
 
   return {
     effectiveProvider,
-    storedPreference,
-    setPreference,
-    status: statusQuery.data,
+    /** The model this provider will actually be asked for. */
+    effectiveModel: resolveEffectiveModel(
+      models[effectiveProvider],
+      activeStatus,
+    ),
+    /** What the user picked, per provider — absent means "use the default". */
+    pickedModels: models,
+    setProvider,
+    setModel,
+    status,
     isLoading: statusQuery.isPending,
     isError: statusQuery.isError,
     refetchStatus: () => statusQuery.refetch(),

@@ -127,11 +127,16 @@ function SessionView() {
 /** Shared by both input modes: one answer, then let server state advance. */
 function useSubmitAnswer(sessionId: string) {
   const queryClient = useQueryClient();
-  const { effectiveProvider } = useAiPreference();
+  const { effectiveProvider, effectiveModel } = useAiPreference();
   return useMutation({
     mutationFn: (answer: string) =>
       answerTurn({
-        data: { id: sessionId, answer, aiProvider: effectiveProvider },
+        data: {
+          id: sessionId,
+          answer,
+          aiProvider: effectiveProvider,
+          aiModel: effectiveModel,
+        },
       }),
     // Invalidating the session is what produces the next question and the new
     // progress count. Nothing is tracked locally.
@@ -190,7 +195,7 @@ function Room({
   children: ReactNode;
 }) {
   const queryClient = useQueryClient();
-  const { effectiveProvider } = useAiPreference();
+  const { effectiveProvider, effectiveModel } = useAiPreference();
   const [showTranscript, setShowTranscript] = useState(false);
 
   // Leaving is an ending, so it goes through the server. Nothing navigates
@@ -199,7 +204,11 @@ function Room({
   const end = useMutation({
     mutationFn: async () => {
       const result = await leaveSession({
-        data: { id: session.id, aiProvider: effectiveProvider },
+        data: {
+          id: session.id,
+          aiProvider: effectiveProvider,
+          aiModel: effectiveModel,
+        },
       });
       if (!result.ok) throw new Error(describeEndFailure(result.reason));
       return result;

@@ -47,13 +47,14 @@ export const answerTurn = createServerFn({ method: "POST" })
       id: z.uuid(),
       answer: z.string().trim().min(1),
       aiProvider: z.enum(["local", "gemini"]).optional(),
+      aiModel: z.string().optional(),
     }),
   )
   .handler(async ({ data }) => {
     const db = getDb();
     const result = await submitAnswer(
       db,
-      getReportGenerator(data.aiProvider),
+      getReportGenerator({ provider: data.aiProvider, model: data.aiModel }),
       data.id,
       data.answer,
     );
@@ -72,13 +73,14 @@ export const leaveSession = createServerFn({ method: "POST" })
     z.object({
       id: z.uuid(),
       aiProvider: z.enum(["local", "gemini"]).optional(),
+      aiModel: z.string().optional(),
     }),
   )
   .handler(async ({ data }) => {
     const db = getDb();
     const result = await endSession(
       db,
-      getReportGenerator(data.aiProvider),
+      getReportGenerator({ provider: data.aiProvider, model: data.aiModel }),
       data.id,
     );
     if (result === null)

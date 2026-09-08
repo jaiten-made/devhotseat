@@ -37,7 +37,7 @@ function pickedCount(picked: number, bank: number): string {
 function NewSession() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { effectiveProvider, status } = useAiPreference();
+  const { effectiveProvider, effectiveModel, status } = useAiPreference();
 
   /**
    * Which questions are ticked, or null for "everything in the bank".
@@ -228,8 +228,8 @@ function NewSession() {
           <p className="text-xs text-ink-faint font-mono">
             Scoring:{" "}
             {effectiveProvider === "local"
-              ? `Local AI (${status?.localAi.model ?? "llama3.2"}${status?.localAi.isReachable === false ? " — offline" : ""})`
-              : `Gemini (${status?.geminiModel ?? "gemini-3.5-flash-lite"})`}
+              ? `Local AI (${effectiveModel}${status?.local.isReachable === false ? " — offline" : ""})`
+              : `Gemini (${effectiveModel})`}
           </p>
         </div>
         <Button
