@@ -119,9 +119,16 @@ app code depends on it and it is not part of the runtime.
   consumer Google account. See ADR 0008.
 * The key lives in `.env` as `GEMINI_API_KEY`, with a placeholder in
   `.env.example`. Never in code, never committed.
-* The model is one named constant, `REPORT_MODEL`, pinned to a concrete version
-  rather than a `-latest` alias. Check it against the live model list when
-  bumping it.
+* The model is not pinned in code. Both providers are asked what they can run —
+  Ollama for its pulled tags, the Gemini API for the catalogue the key reaches —
+  and the picker offers that list. `LOCAL_AI_MODEL` and `GEMINI_MODEL` are the
+  defaults when nothing is picked. See ADR 0033.
+* The picked model arrives from the browser with each report, so it is checked
+  for shape before use: a Gemini id goes into the request path, and
+  `resolveModelId` falls back to the default rather than passing on an id
+  carrying `..`, a scheme or whitespace.
+* Whichever model wrote a report is stored on it. Do not assume two reports
+  were scored by the same one.
 * If a call fails with an auth or key-blocked error, stop and tell me. Do not
   silently fall back to ADC or gcloud auth.
 * Do not use Genkit in v1. It becomes the right choice when I add a second and

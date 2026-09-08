@@ -107,7 +107,38 @@ cp .env.example .env
 
 - **Google Gemini API (Higher quality feedback)**: Set `GEMINI_API_KEY` in `.env`.
 
-You can switch between Local AI and Gemini at any time using the toggle in the app header or by editing `AI_PROVIDER` in `.env`.
+Switch between them at any time from the toggle in the app header, which is
+also where you pick the model. Each provider is asked what it can actually run
+— Ollama for the models you have pulled, Gemini for the catalogue your key
+reaches — so a model you pull later appears without restarting the app.
+`AI_PROVIDER`, `LOCAL_AI_MODEL` and `GEMINI_MODEL` in `.env` set the defaults
+for when you have not picked anything.
+
+#### Checking Local AI is connected
+
+The toggle shows a dot: green when the local runner answered, red when it did
+not. Open it for the endpoint, the model list and the reason for a failure, and
+use the refresh button to probe again.
+
+Worth knowing what that dot actually measures:
+
+- **The browser never talks to Ollama.** The devhotseat server does, so "local"
+  means local to the server. On `pnpm dev` that is your machine; in Docker it
+  is the container, which is why `compose.yaml` points it at
+  `host.docker.internal`.
+- **Green means the runner answered, not that a report will succeed.** A model
+  too large for your RAM lists fine and fails when it is asked to generate.
+- **Green with an empty model list means the runner is up with nothing
+  pulled.** Run `ollama pull llama3.2`.
+
+To check from a terminal instead:
+
+```bash
+curl -s http://localhost:11434/api/tags | python3 -m json.tool
+```
+
+That is the same endpoint the app probes, so if it lists your models and the
+app disagrees, the difference is where the server is running — not Ollama.
 
 ### 3. Apply the migrations
 

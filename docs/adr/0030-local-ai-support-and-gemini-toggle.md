@@ -1,10 +1,15 @@
 # 30. Local AI support with a Gemini API toggle
 
+> **Amended by [0033](0033-models-are-listed-live-and-picked-per-request.md).**
+> The provider toggle stands. The model is no longer fixed per provider in
+> `.env`: both providers are asked what they can run, and the model is picked
+> in the same dialog and sent with each report.
+
 ## Decision
 
 Support local AI models (via Ollama or OpenAI-compatible local endpoints like LM Studio) alongside the Gemini API behind the existing `ReportGenerator` interface.
 
-Make `GEMINI_API_KEY` optional so that `devhotseat` can run 100% locally and offline out of the box with zero external accounts. Provide a runtime and environment toggle allowing users to switch between local model execution (e.g. `llama3.2`, `qwen2.5`) and cloud Google Gemini (`gemini-3.5-flash-lite`) whenever they want higher quality feedback.
+Make `GEMINI_API_KEY` optional so that `devhotseat` can run 100% locally and offline out of the box with zero external accounts. Provide a runtime and environment toggle allowing users to switch between local model execution (e.g. `llama3.2`, `qwen2.5`) and cloud Google Gemini (`gemini-3.5-flash-lite`) whenever they want higher quality feedback. Which model each provider runs is chosen in the picker; see [0033](0033-models-are-listed-live-and-picked-per-request.md).
 
 ## Why
 
