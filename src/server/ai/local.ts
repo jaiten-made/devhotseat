@@ -1,6 +1,7 @@
 import type { GeneratedReport, ReportGenerator } from "./client";
 import { parseReportResponse } from "./parse";
 import { buildPrompt, loadPromptTemplate, type TranscriptTurn } from "./prompt";
+import { REPORT_JSON_SCHEMA } from "./response-schema";
 
 export const DEFAULT_LOCAL_AI_BASE_URL = "http://localhost:11434";
 export const DEFAULT_LOCAL_AI_MODEL = "llama3.2";
@@ -120,7 +121,14 @@ export function createLocalReportGenerator(
                   content: promptText,
                 },
               ],
-              format: "json",
+              // The schema itself, not just `"json"`. `"json"` only constrains
+              // the output to be *some* JSON object, and a 3B model asked for
+              // a nested rubric will periodically flatten it —
+              // `"situation": 2` instead of `{ score, evidence }` — which the
+              // parser can only degrade to prose. Passing the schema
+              // constrains decoding to the shape, so the wrong shape cannot
+              // be emitted in the first place.
+              format: REPORT_JSON_SCHEMA,
               stream: false,
               options: {
                 temperature: 0.3,

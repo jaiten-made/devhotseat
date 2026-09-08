@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createLocalReportGenerator } from "./local";
 import type { TranscriptTurn } from "./prompt";
+import { REPORT_JSON_SCHEMA } from "./response-schema";
 
 const turns: ReadonlyArray<TranscriptTurn> = [
   {
@@ -32,7 +33,7 @@ const validReportPayload = {
 };
 
 describe("createLocalReportGenerator", () => {
-  it("calls Ollama /api/chat with format json by default", async () => {
+  it("calls Ollama /api/chat with the report schema by default", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -57,6 +58,15 @@ describe("createLocalReportGenerator", () => {
         body: expect.stringContaining('"model":"llama3.2"'),
       }),
     );
+    // `format: "json"` only buys "some JSON object", and a small local model
+    // periodically returns a flattened rubric that the parser can only degrade
+    // to prose. The schema constrains decoding to the shape instead.
+    const [, init] = mockFetch.mock.calls[0] as [string, { body: string }];
+    const sent = JSON.parse(init.body) as {
+      format?: Record<string, unknown>;
+    };
+    expect(sent.format).toEqual(REPORT_JSON_SCHEMA);
+
     expect(report.model).toBe("llama3.2");
     expect(report.content).toBe(validReportPayload.narrative);
     expect(report.structured?.turns).toHaveLength(1);
