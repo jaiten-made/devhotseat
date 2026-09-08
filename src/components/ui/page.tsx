@@ -35,6 +35,15 @@ export function Page({ children }: { children: ReactNode }) {
  * it reads as a figure attached to the heading rather than a label above it,
  * and wraps underneath on a narrow viewport instead of squeezing the title.
  *
+ * That line is a toolbar: the title, its figure and its action are centred on
+ * one axis and the row holds a fixed height whether or not there is an action
+ * in it. The figure used to share the title's baseline, which reads well
+ * against text and badly against a button — 28px of heading and a 32px
+ * control cannot both sit on a baseline and look level, so the figure ended up
+ * high and the button hung below the word. Centring is what a row of unlike
+ * things needs, and the fixed height keeps the description the same distance
+ * below the title on a screen with a button and a screen without one.
+ *
  * The title is cast in headline capitals here rather than at each call site,
  * so a route cannot spell one differently from the next. The meta is left
  * alone: it is as often a count or a timestamp as it is a phrase.
@@ -52,14 +61,14 @@ export function PageHeader({
 }) {
   return (
     <header className="border-b border-rule pb-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+      <div className="flex min-h-9 flex-wrap items-center justify-between gap-x-6 gap-y-2">
         <h1 className="min-w-0 text-[1.75rem] font-semibold leading-none">
           {titleCase(title)}
         </h1>
         {(meta || actions) && (
-          <div className="flex shrink-0 items-baseline gap-4">
+          <div className="flex shrink-0 items-center gap-4">
             {meta && <p className="field-label">{meta}</p>}
-            {actions && <div className="self-center">{actions}</div>}
+            {actions}
           </div>
         )}
       </div>
