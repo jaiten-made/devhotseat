@@ -1,6 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 import type { StructuredReport } from "../../lib/report/schema";
-import { REPORT_MODEL } from "./model";
 import { parseReportResponse } from "./parse";
 import { buildPrompt, loadPromptTemplate, type TranscriptTurn } from "./prompt";
 import { REPORT_JSON_SCHEMA } from "./response-schema";
@@ -30,7 +29,12 @@ export interface ReportGenerator {
 
 export interface GeminiReportGeneratorOptions {
   readonly apiKey: string;
-  readonly model?: string;
+  /**
+   * Required rather than defaulted here: the model is the user's choice,
+   * falling back to `GEMINI_MODEL`, and resolving that is `deps.ts`'s job. A
+   * default in this file would be a second answer to the same question.
+   */
+  readonly model: string;
   /** Injectable for tests; defaults to the prompt.md beside this file. */
   readonly template?: string;
 }
@@ -56,7 +60,7 @@ export function createGeminiReportGenerator(
     throw new Error("GEMINI_API_KEY is empty.");
   }
 
-  const model = options.model ?? REPORT_MODEL;
+  const { model } = options;
   const template = options.template ?? loadPromptTemplate();
   const client = new GoogleGenAI({ apiKey: options.apiKey });
 
