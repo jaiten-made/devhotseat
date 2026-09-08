@@ -1,239 +1,108 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Trash2 } from "lucide-react";
-import { useState } from "react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo } from "react";
+import { StreakHeatmap, StreakStats } from "@/components/dashboard";
 import {
   EmptyState,
   Notice,
   Page,
   PageHeader,
   Panel,
-  Row,
-  RowList,
+  Section,
 } from "@/components/ui/page";
-import { createQuestion, removeQuestion } from "@/fn/questions";
-import { startSession } from "@/fn/sessions";
-import { useAiPreference } from "@/lib/ai-preference";
-import { questionsQuery } from "@/lib/queries";
-import { queryKeys } from "@/lib/query-keys";
+import { buildHeatmap } from "@/lib/activity/heatmap";
+import { sessionsQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/")({
-  component: QuestionBank,
+  component: Dashboard,
 });
 
-/** The header's one number, so the size of the bank is stated without a row
- *  of it having to be counted. */
-function bankCount(count: number): string {
-  if (count === 0) return "Nothing in the bank";
-  return `${count} ${count === 1 ? "question" : "questions"} in the bank`;
-}
+/**
+ * The dashboard is the session list read a second way.
+ *
+ * It runs off `sessionsQuery` rather than an analytics endpoint of its own, so
+ * arriving here from Sessions costs no request and the two screens can never
+ * disagree about what happened. The grid is derived in the browser, which is
+ * also the only place that knows the user's timezone — and therefore which day
+ * a nine-o'clock session belongs to.
+ */
+function Dashboard() {
+  const sessions = useQuery(sessionsQuery());
 
-function QuestionBank() {
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const { effectiveProvider, status } = useAiPreference();
-  // UI state only: the field being typed into.
-  const [text, setText] = useState("");
+  const heatmap = useMemo(
+    // `new Date()` is read once per landing rather than per render: a dashboard
+    // left open overnight is a stale dashboard, and reloading is the fix. It
+    // is not worth a ticking clock to move one square along at midnight.
+    () =>
+      sessions.data ? buildHeatmap(sessions.data, { today: new Date() }) : null,
+    [sessions.data],
+  );
 
-  const questions = useQuery(questionsQuery());
-
-  const add = useMutation({
-    mutationFn: (value: string) => createQuestion({ data: { text: value } }),
-    onSuccess: () => {
-      setText("");
-      queryClient.invalidateQueries({ queryKey: queryKeys.questions });
-    },
-  });
-
-  const remove = useMutation({
-    mutationFn: (id: string) => removeQuestion({ data: { id } }),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.questions }),
-  });
-
-  const begin = useMutation({
-    mutationFn: () => startSession(),
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.sessions });
-      if (result.ok && result.session) {
-        navigate({
-          to: "/sessions/$sessionId",
-          params: { sessionId: result.session.id },
-        });
-      }
-    },
-  });
-
-  // The header is rendered in every branch, so the screen does not rebuild
-  // itself around the content once the query lands.
+  // Rendered in every branch, so a screen that is loading, broken or empty is
+  // still recognisably this screen.
   const header = (
     <PageHeader
-      title="Question bank"
-      // Only once the bank has landed. It sits beside the title rather than
-      // above it, so arriving at the count adds nothing to the header's
-      // height and the screen does not shuffle down when the query returns.
-      meta={questions.isSuccess ? bankCount(questions.data.length) : undefined}
-      description="A session asks every question here, in random order. Add as many as you like."
+      // The other two screens state a count beside the title. This one does
+      // not: the days practised are already stated underneath, at the size the
+      // number deserves, and saying it twice only made the header argue with
+      // the panel below it.
+      title="Dashboard"
+      description="How often you sit in the hot seat."
     />
   );
 
-  if (questions.isPending) {
+  if (sessions.isPending) {
     return (
       <Page>
         {header}
-        <Notice>Loading questions…</Notice>
+        <Notice>Loading practice history…</Notice>
       </Page>
     );
   }
-  if (questions.isError) {
+  if (sessions.isError || !heatmap) {
     return (
       <Page>
         {header}
         <Notice tone="destructive" role="alert">
-          Could not load the question bank: {questions.error.message}
+          Could not load practice history: {sessions.error?.message}
         </Notice>
       </Page>
     );
   }
 
-  const bank = questions.data;
-  // A session asks the whole bank, so one question is enough to start.
-  const canStart = bank.length > 0;
-  const upcomingLength = bank.length;
+  // A year of empty squares is not an invitation, it is a reproach. Until
+  // something has been practised the screen says so in a sentence and points
+  // at the one move that changes it.
+  if (heatmap.daysPractised === 0 && heatmap.longestStreak === 0) {
+    return (
+      <Page>
+        {header}
+        <EmptyState>
+          No practice to chart yet. Start a session from the{" "}
+          <Link
+            to="/questions"
+            className="font-medium text-ink underline underline-offset-4"
+          >
+            question bank
+          </Link>{" "}
+          and this fills in a square a day.
+        </EmptyState>
+      </Page>
+    );
+  }
 
   return (
     <Page>
       {header}
-
-      <section className="space-y-4">
-        <form
-          className="flex gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (text.trim() !== "") add.mutate(text);
-          }}
-        >
-          <Input
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            placeholder="Add an interview question…"
-            aria-label="New question"
-          />
-          <Button
-            type="submit"
-            variant="outline"
-            tone="success"
-            className="text-ink-muted"
-            disabled={text.trim() === "" || add.isPending}
-          >
-            Add
-          </Button>
-        </form>
-
-        {add.isError && (
-          <Notice tone="destructive" role="alert">
-            Could not add that question: {add.error.message}
-          </Notice>
-        )}
-
-        {bank.length === 0 ? (
-          <EmptyState>No questions yet. Add your first one above.</EmptyState>
-        ) : (
-          /* No position markers: the bank is a set, asked in a random order
-             every session, so numbering the rows would assert an order that
-             does not exist. */
-          <RowList>
-            {bank.map((question) => (
-              <Row
-                key={question.id}
-                className="group gap-3 px-4 py-3 transition-colors hover:bg-sunk"
-              >
-                <span className="flex-1 leading-snug">{question.text}</span>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      tone="destructive"
-                      className="text-ink-faint"
-                      aria-label={`Delete question: ${question.text}`}
-                      disabled={remove.isPending}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete this question?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        “{question.text}” will be removed from the bank. Past
-                        transcripts keep their own copy of the wording, so this
-                        does not change any session you have already run.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        variant="destructive"
-                        onClick={() => remove.mutate(question.id)}
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </Row>
-            ))}
-          </RowList>
-        )}
-      </section>
-
-      {/*
-        The one filled control on the screen, in a sheet of its own. Adding a
-        question is incidental beside starting the session the questions are
-        for, so "Add" is outlined and this is not.
-      */}
-      <Panel className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <p className="text-sm text-ink-muted">
-            {canStart ? (
-              <>
-                This session will ask {upcomingLength}{" "}
-                {upcomingLength === 1 ? "question" : "questions"}.
-              </>
-            ) : (
-              "Add at least one question to start a session."
-            )}
-          </p>
-          <p className="text-xs text-ink-faint font-mono">
-            Scoring:{" "}
-            {effectiveProvider === "local"
-              ? `Local AI (${status?.localAi.model ?? "llama3.2"}${status?.localAi.isReachable === false ? " — offline" : ""})`
-              : `Gemini (${status?.geminiModel ?? "gemini-3.5-flash-lite"})`}
-          </p>
-        </div>
-        <Button
-          size="lg"
-          className="shrink-0"
-          onClick={() => begin.mutate()}
-          disabled={!canStart || begin.isPending}
-        >
-          {begin.isPending ? "Starting…" : "Start a session"}
-        </Button>
-      </Panel>
+      <StreakStats heatmap={heatmap} />
+      <Section
+        title="The last year"
+        description="A square for every day, Monday at the top, filled for the days you practised. A day you answered nothing is a day you did not practise."
+      >
+        <Panel className="px-5 py-5">
+          <StreakHeatmap heatmap={heatmap} />
+        </Panel>
+      </Section>
     </Page>
   );
 }

@@ -95,7 +95,7 @@ function SessionList() {
           <EmptyState>
             No sessions yet. Start one from the{" "}
             <Link
-              to="/"
+              to="/questions"
               className="font-medium text-ink underline underline-offset-4"
             >
               question bank

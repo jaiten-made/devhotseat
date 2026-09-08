@@ -13,7 +13,7 @@ test("add questions, run a session, read the transcript and report", async ({
   page,
 }) => {
   await resetDatabase();
-  await page.goto("/");
+  await page.goto("/questions");
 
   for (const question of QUESTIONS) {
     await page.getByLabel("New question").fill(question);

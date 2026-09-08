@@ -16,7 +16,7 @@ test("leaving part way through ends the interview and reports on what was answer
   page,
 }) => {
   await resetDatabase();
-  await page.goto("/");
+  await page.goto("/questions");
 
   for (const question of QUESTIONS) {
     await page.getByLabel("New question").fill(question);
@@ -79,7 +79,7 @@ test("leaving before answering anything ends it without a report", async ({
   page,
 }) => {
   await resetDatabase();
-  await page.goto("/");
+  await page.goto("/questions");
 
   await page.getByLabel("New question").fill("The only question?");
   await page.getByRole("button", { name: "Add", exact: true }).click();

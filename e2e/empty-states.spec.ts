@@ -7,7 +7,7 @@ import {
 
 test("an empty question bank blocks starting a session", async ({ page }) => {
   await resetDatabase();
-  await page.goto("/");
+  await page.goto("/questions");
 
   await expect(page.getByText("No questions yet")).toBeVisible();
   await expect(
@@ -22,7 +22,7 @@ test("a single question is enough to start a shorter session", async ({
   page,
 }) => {
   await resetDatabase();
-  await page.goto("/");
+  await page.goto("/questions");
 
   await page.getByLabel("New question").fill("The only question?");
   await page.getByRole("button", { name: "Add", exact: true }).click();

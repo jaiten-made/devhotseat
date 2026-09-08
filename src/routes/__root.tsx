@@ -65,10 +65,10 @@ function RootDocument({ children }: { children: ReactNode }) {
               </Link>
               <nav className="flex h-14 items-stretch gap-6">
                 <NavLink to="/" exact>
-                  Questions
+                  Dashboard
                 </NavLink>
+                <NavLink to="/questions">Questions</NavLink>
                 <NavLink to="/sessions">Sessions</NavLink>
-                <NavLink to="/dashboard">Dashboard</NavLink>
               </nav>
               <div className="ml-auto flex items-center">
                 <AiProviderToggle />

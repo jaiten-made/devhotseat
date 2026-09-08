@@ -5,7 +5,7 @@ test("deleting a question asks first, and cancelling keeps it", async ({
   page,
 }) => {
   await resetDatabase();
-  await page.goto("/");
+  await page.goto("/questions");
 
   await page.getByLabel("New question").fill("Doomed question?");
   await page.getByRole("button", { name: "Add", exact: true }).click();

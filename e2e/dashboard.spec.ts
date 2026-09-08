@@ -5,7 +5,7 @@ test("the dashboard invites a first session rather than charting a blank year", 
   page,
 }) => {
   await resetDatabase();
-  await page.goto("/dashboard");
+  await page.goto("/");
 
   await expect(page.getByText("No practice to chart yet")).toBeVisible();
   // Nothing claiming a streak, and no grid of empty squares.
@@ -22,7 +22,7 @@ test("a run of days reads as a current streak, and a gap ends the last one", asy
   // Today, yesterday and the day before — then a fortnight-old pair that ran
   // longer, so the current and longest runs are different numbers.
   await seedPractice([0, 1, 2, 14, 15, 16, 17]);
-  await page.goto("/dashboard");
+  await page.goto("/");
 
   // Located by the term rather than by its text: "Days practised" also
   // appears in the heatmap table's caption.
@@ -40,7 +40,7 @@ test("a day names what was answered on it, however many sittings that took", asy
   await resetDatabase();
   // Two sessions today, one yesterday, nothing the day before.
   await seedPractice([0, 0, 1]);
-  await page.goto("/dashboard");
+  await page.goto("/");
 
   // Twice in a day is one square, and it counts the answers rather than the
   // sittings: sitting down is what the map records, not how often.

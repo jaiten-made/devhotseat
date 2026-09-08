@@ -10,7 +10,7 @@ test("deleting a session asks first, and cancelling keeps it", async ({
   await seedSessionWithoutReport();
 
   // A question in the bank, so the delete can be shown not to touch it.
-  await page.goto("/");
+  await page.goto("/questions");
   await page.getByLabel("New question").fill("Kept question?");
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await expect(page.getByText("Kept question?")).toBeVisible();
