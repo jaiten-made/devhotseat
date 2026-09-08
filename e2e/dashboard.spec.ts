@@ -34,7 +34,17 @@ test("a run of days reads as a current streak, and a gap ends the last one", asy
   await expect(stat("Days practised")).toContainText("7 days");
 });
 
-test("a day names what was answered on it, however many sittings that took", async ({
+/**
+ * The square is the unit, not the sitting: two sessions in an afternoon fill
+ * one square, and it is filled the same as a day that held one.
+ *
+ * The tooltip names the date and stops there — see the comment on `Cell` in
+ * `streak-heatmap.tsx`. This spec used to expect a count of answers in it,
+ * which `57d048e` deliberately removed; what is left to prove is that a day is
+ * one square however often it was sat, and that only the days practised are
+ * read out.
+ */
+test("twice in a day is one square, and only practised days are named", async ({
   page,
 }) => {
   await resetDatabase();
@@ -42,13 +52,50 @@ test("a day names what was answered on it, however many sittings that took", asy
   await seedPractice([0, 0, 1]);
   await page.goto("/");
 
-  // Twice in a day is one square, and it counts the answers rather than the
-  // sittings: sitting down is what the map records, not how often.
-  const today = page.getByTitle(/^4 answers on /);
-  const yesterday = page.getByTitle(/^2 answers on /);
-  await expect(today).toBeVisible();
-  await expect(yesterday).toBeVisible();
-  await expect(page.getByTitle(/session/)).toHaveCount(0);
+  // Formatted in the page, so these are the labels the component itself would
+  // build: it formats in the browser's locale, which is not this process's.
+  const label = (daysAgo: number) =>
+    page.evaluate((offset) => {
+      const now = new Date();
+      const day = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() - offset,
+      );
+      return new Intl.DateTimeFormat(undefined, {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }).format(day);
+    }, daysAgo);
+
+  const [todayLabel, yesterdayLabel, dayBeforeLabel] = await Promise.all([
+    label(0),
+    label(1),
+    label(2),
+  ]);
+
+  const square = (text: string) => page.getByTitle(text, { exact: true });
+  const today = square(todayLabel);
+  const yesterday = square(yesterdayLabel);
+  const dayBefore = square(dayBeforeLabel);
+
+  // Two sittings, one square. Every day in the window has exactly one.
+  await expect(today).toHaveCount(1);
+  await expect(yesterday).toHaveCount(1);
+  await expect(dayBefore).toHaveCount(1);
+
+  // Nothing in a tooltip counts sittings or answers.
+  await expect(page.getByTitle(/answers?|sessions?/)).toHaveCount(0);
+
+  // Only a practised day is read out. Scoped to the squares: the table's
+  // caption names the window's last day too, which is today.
+  const announced = (text: string) =>
+    page.locator("td span").filter({ hasText: text });
+  await expect(announced(todayLabel)).toHaveCount(1);
+  await expect(announced(yesterdayLabel)).toHaveCount(1);
+  await expect(announced(dayBeforeLabel)).toHaveCount(0);
 
   // A square is filled or it is empty, and both are the same ink: a coloured
   // heatmap would break the rule the whole palette is built on. Asserted
@@ -56,8 +103,9 @@ test("a day names what was answered on it, however many sittings that took", asy
   const fill = (locator: typeof today) =>
     locator.evaluate((node) => getComputedStyle(node).backgroundColor);
   const practised = await fill(today);
-  const unpractised = await fill(page.getByTitle(/^No practice on /).first());
+  const unpractised = await fill(dayBefore);
   expect(practised).not.toBe(unpractised);
+  // Once or twice in a day, the square is the same: the map does not grade it.
   expect(await fill(yesterday)).toBe(practised);
   for (const colour of [practised, unpractised]) {
     expect(colour).toMatch(/^(?:oklab|oklch|color|rgba?)\(/);
