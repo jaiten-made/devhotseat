@@ -112,9 +112,12 @@ function ModelSelect({
 }
 
 /**
- * One provider's card. The heading is the button that selects the provider;
- * the model dropdown is its sibling rather than its child, because a Radix
- * select trigger is itself a button and cannot be nested inside one.
+ * One provider's card: its status, its model dropdown, and the button that
+ * makes that pairing the active one.
+ *
+ * The button is labelled for the model rather than the provider, because the
+ * model is the choice being made — which provider serves it follows from it,
+ * and is already named at the top of the card.
  */
 function ProviderCard({
   selected,
@@ -140,7 +143,7 @@ function ProviderCard({
       {children}
       {!selected && !disabled && (
         <Button variant="outline" size="sm" onClick={onSelect} className="mt-1">
-          Use this provider
+          Use this model
         </Button>
       )}
     </div>
