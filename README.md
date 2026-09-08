@@ -1,10 +1,10 @@
 # devhotseat
 
 An AI interview practice tool built for one person. Add interview questions by
-hand, practise a session of them one turn at a time, then read the transcript
-and an AI-written feedback report afterwards. There is no auth, no
-multi-tenancy and no hosted deployment: you start it yourself, and it reaches
-out to Google to transcribe your answers and write the report.
+hand, pick the ones a session should ask, practise them one turn at a time,
+then read the transcript and an AI-written feedback report afterwards. There is
+no auth, no multi-tenancy and no hosted deployment: you start it yourself, and
+it reaches out to Google to transcribe your answers and write the report.
 
 <table>
 <tr>
@@ -146,16 +146,18 @@ docker compose up -d --wait # Starts dev database
 pnpm dev                    # Starts Vite dev server
 ```
 
-The app is served at http://localhost:3000. Add questions on the first page,
-start a session once the bank holds at least one, then read the transcript and
-report from **Sessions**. A session asks every question in the bank, in random
-order, reading each one aloud and transcribing your spoken answer. It runs as a
-call screen: entering it reads nothing out until you press to begin, after
-which the bar across the bottom is pressed once to start talking and again to
-hand your answer back, and the avatar in the middle is filled in only while the
-microphone is actually open. You can press to talk over a question
-that is still being read, which stops it. Replaying the question and showing
-the answers so far sit under the bar.
+The app is served at http://localhost:3000. Add questions under
+**Questions**, then start a session from **Sessions**: the new-session screen
+lists the bank with every question ticked, so untick anything this sitting
+should skip. A session asks the questions you picked, in random order, reading
+each one aloud and transcribing your spoken answer. The transcript and report
+are read back from **Sessions** afterwards. It runs as a call screen: entering
+it reads nothing out until you press to begin, after which the bar across the
+bottom is pressed once to start talking and again to hand your answer back, and
+the avatar in the middle is filled in only while the microphone is actually
+open. You can press to talk over a question that is still being read, which
+stops it. Replaying the question and showing the answers so far sit under the
+bar.
 
 Before the first press the room shows a short briefing rather than the question,
 which is not revealed until it is spoken. **End interview** in the header is the

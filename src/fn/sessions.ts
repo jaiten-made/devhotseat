@@ -19,23 +19,23 @@ export const fetchSession = createServerFn({ method: "GET" })
   .handler(async ({ data }) => getSessionDetail(getDb(), data.id));
 
 /**
- * Starts a session, or reports why it cannot start. An empty bank is an
- * expected answer, not an exception, so the UI can say so without catching
- * anything.
+ * Starts a session over the questions picked for it. Picking none is an
+ * expected answer, not an exception — the list is validated for shape, not for
+ * length — so the UI can say so without catching anything.
  */
-export const startSession = createServerFn({ method: "POST" }).handler(
-  async () => {
+export const startSession = createServerFn({ method: "POST" })
+  .validator(z.object({ questionIds: z.array(z.uuid()) }))
+  .handler(async ({ data }) => {
     const db = getDb();
-    const result = await createSession(db);
+    const result = await createSession(db, data.questionIds);
     if (!result.ok) {
-      return { ok: false as const, reason: result.reason, have: result.have };
+      return { ok: false as const, reason: result.reason };
     }
     return {
       ok: true as const,
       session: await getSessionDetail(db, result.sessionId),
     };
-  },
-);
+  });
 
 /**
  * Records an answer. Submitting the last one ends the session and generates

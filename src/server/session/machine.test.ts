@@ -6,7 +6,7 @@ import {
   transition,
 } from "./machine";
 
-const START: MachineEvent = { type: "START", availableQuestions: 3 };
+const START: MachineEvent = { type: "START", selectedQuestions: 3 };
 const SUBMIT: MachineEvent = { type: "SUBMIT_ANSWER" };
 const END: MachineEvent = { type: "END" };
 const READY: MachineEvent = { type: "REPORT_READY" };
@@ -183,26 +183,26 @@ describe("transition — the full state x event matrix", () => {
 });
 
 describe("starting a session", () => {
-  it("rejects an empty bank", () => {
-    expect(transition(null, { type: "START", availableQuestions: 0 })).toEqual({
+  it("rejects picking no questions", () => {
+    expect(transition(null, { type: "START", selectedQuestions: 0 })).toEqual({
       ok: false,
-      reason: "empty_question_bank",
+      reason: "no_questions_selected",
     });
   });
 
   it("starts on a single question", () => {
-    expect(transition(null, { type: "START", availableQuestions: 1 })).toEqual({
+    expect(transition(null, { type: "START", selectedQuestions: 1 })).toEqual({
       ok: true,
       state: { status: "awaiting_answer", position: 1, questionCount: 1 },
     });
   });
 
-  // A session is the whole bank, so its length is just the bank size.
+  // A session is the questions picked for it, so its length is just how many.
   it.each([1, 2, 5, 9, 40])(
-    "a bank of %i questions gives a session of the same length",
+    "picking %i questions gives a session of the same length",
     (available) => {
       expect(
-        transition(null, { type: "START", availableQuestions: available }),
+        transition(null, { type: "START", selectedQuestions: available }),
       ).toEqual({
         ok: true,
         state: {
@@ -215,7 +215,7 @@ describe("starting a session", () => {
   );
 
   it("ends a one-question session on its only answer", () => {
-    const started = transition(null, { type: "START", availableQuestions: 1 });
+    const started = transition(null, { type: "START", selectedQuestions: 1 });
     if (!started.ok) throw new Error("expected a session");
     expect(transition(started.state, SUBMIT)).toEqual({
       ok: true,
@@ -224,10 +224,10 @@ describe("starting a session", () => {
   });
 
   // A count that is not a positive integer can only come from a bug upstream.
-  it.each([-1, 2.5])("rejects a bank count of %s", (availableQuestions) => {
-    expect(transition(null, { type: "START", availableQuestions })).toEqual({
+  it.each([-1, 2.5])("rejects a picked count of %s", (selectedQuestions) => {
+    expect(transition(null, { type: "START", selectedQuestions })).toEqual({
       ok: false,
-      reason: "empty_question_bank",
+      reason: "no_questions_selected",
     });
   });
 });
@@ -238,7 +238,7 @@ describe("auto-ending", () => {
     let state = (
       transition(null, {
         type: "START",
-        availableQuestions: questionCount,
+        selectedQuestions: questionCount,
       }) as { state: MachineState }
     ).state;
 
@@ -271,7 +271,7 @@ describe("auto-ending", () => {
       state = result.state;
     };
 
-    step({ type: "START", availableQuestions: 3 });
+    step({ type: "START", selectedQuestions: 3 });
     step(SUBMIT);
     step(SUBMIT);
     step(SUBMIT);

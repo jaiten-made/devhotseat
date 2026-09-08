@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -20,13 +20,10 @@ import {
   Notice,
   Page,
   PageHeader,
-  Panel,
   Row,
   RowList,
 } from "@/components/ui/page";
 import { createQuestion, removeQuestion } from "@/fn/questions";
-import { startSession } from "@/fn/sessions";
-import { useAiPreference } from "@/lib/ai-preference";
 import { questionsQuery } from "@/lib/queries";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -43,8 +40,6 @@ function bankCount(count: number): string {
 
 function QuestionBank() {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const { effectiveProvider, status } = useAiPreference();
   // UI state only: the field being typed into.
   const [text, setText] = useState("");
 
@@ -64,19 +59,6 @@ function QuestionBank() {
       queryClient.invalidateQueries({ queryKey: queryKeys.questions }),
   });
 
-  const begin = useMutation({
-    mutationFn: () => startSession(),
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.sessions });
-      if (result.ok && result.session) {
-        navigate({
-          to: "/sessions/$sessionId",
-          params: { sessionId: result.session.id },
-        });
-      }
-    },
-  });
-
   // The header is rendered in every branch, so the screen does not rebuild
   // itself around the content once the query lands.
   const header = (
@@ -86,7 +68,16 @@ function QuestionBank() {
       // above it, so arriving at the count adds nothing to the header's
       // height and the screen does not shuffle down when the query returns.
       meta={questions.isSuccess ? bankCount(questions.data.length) : undefined}
-      description="A session asks every question here, in random order. Add as many as you like."
+      actions={
+        // Sessions are created from the sessions screen; this is a shortcut to
+        // it, not a second way of doing it.
+        questions.isSuccess && questions.data.length > 0 ? (
+          <Button asChild variant="outline" size="sm">
+            <Link to="/sessions/new">New session</Link>
+          </Button>
+        ) : undefined
+      }
+      description="Everything a session can draw on. Add as many as you like; which of them a session asks is picked when you start one."
     />
   );
 
@@ -110,9 +101,6 @@ function QuestionBank() {
   }
 
   const bank = questions.data;
-  // A session asks the whole bank, so one question is enough to start.
-  const canStart = bank.length > 0;
-  const upcomingLength = bank.length;
 
   return (
     <Page>
@@ -200,40 +188,6 @@ function QuestionBank() {
           </RowList>
         )}
       </section>
-
-      {/*
-        The one filled control on the screen, in a sheet of its own. Adding a
-        question is incidental beside starting the session the questions are
-        for, so "Add" is outlined and this is not.
-      */}
-      <Panel className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <p className="text-sm text-ink-muted">
-            {canStart ? (
-              <>
-                This session will ask {upcomingLength}{" "}
-                {upcomingLength === 1 ? "question" : "questions"}.
-              </>
-            ) : (
-              "Add at least one question to start a session."
-            )}
-          </p>
-          <p className="text-xs text-ink-faint font-mono">
-            Scoring:{" "}
-            {effectiveProvider === "local"
-              ? `Local AI (${status?.localAi.model ?? "llama3.2"}${status?.localAi.isReachable === false ? " — offline" : ""})`
-              : `Gemini (${status?.geminiModel ?? "gemini-3.5-flash-lite"})`}
-          </p>
-        </div>
-        <Button
-          size="lg"
-          className="shrink-0"
-          onClick={() => begin.mutate()}
-          disabled={!canStart || begin.isPending}
-        >
-          {begin.isPending ? "Starting…" : "Start a session"}
-        </Button>
-      </Panel>
     </Page>
   );
 }

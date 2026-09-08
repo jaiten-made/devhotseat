@@ -5,17 +5,40 @@ import {
   seedSessionWithProseOnlyReport,
 } from "./support/db";
 
-test("an empty question bank blocks starting a session", async ({ page }) => {
+test("an empty question bank leaves nothing to pick", async ({ page }) => {
   await resetDatabase();
   await page.goto("/questions");
 
   await expect(page.getByText("No questions yet")).toBeVisible();
-  await expect(
-    page.getByText("Add at least one question to start a session"),
-  ).toBeVisible();
+  // Nothing to start a session over, so the way through is not offered here.
+  await expect(page.getByRole("link", { name: "New session" })).toHaveCount(0);
+
+  // Reached directly, the picker says what is missing rather than showing an
+  // empty list with a dead button under it.
+  await page.goto("/sessions/new");
+  await expect(page.getByText("Nothing to ask yet")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Start a session" }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
+});
+
+test("unticking every question blocks starting a session", async ({ page }) => {
+  await resetDatabase();
+  await page.goto("/questions");
+
+  await page.getByLabel("New question").fill("The only question?");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("link", { name: "New session" }).click();
+
+  const start = page.getByRole("button", { name: "Start a session" });
+  await expect(start).toBeEnabled();
+
+  await page.getByRole("checkbox", { name: "Clear every question" }).click();
+  await expect(page.getByText("None of 1 picked")).toBeVisible();
+  await expect(
+    page.getByText("Pick at least one question to start a session"),
+  ).toBeVisible();
+  await expect(start).toBeDisabled();
 });
 
 test("a single question is enough to start a shorter session", async ({
@@ -26,6 +49,7 @@ test("a single question is enough to start a shorter session", async ({
 
   await page.getByLabel("New question").fill("The only question?");
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("link", { name: "New session" }).click();
 
   await expect(
     page.getByText("This session will ask 1 question."),

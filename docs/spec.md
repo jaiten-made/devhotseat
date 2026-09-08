@@ -33,9 +33,9 @@ Practice an interview, then review how it went. Four parts, one journey:
 
 1. **Question bank.** I add interview questions by hand and they persist. I can
    see the list and delete from it.
-2. **Session.** The app reads a question from the bank aloud, I answer out loud,
-   it asks the next. Turn by turn. Typing is always available as well. Every
-   turn is saved to Postgres as it happens.
+2. **Session.** I pick which questions this sitting should ask, then the app
+   reads one aloud, I answer out loud, it asks the next. Turn by turn. Typing
+   is always available as well. Every turn is saved to Postgres as it happens.
 3. **Transcript view.** I can open a past session and read the full Q&A exchange
    in the UI, and delete a session I do not want to keep.
 4. **Feedback report.** When a session ends the AI produces a written report on
@@ -65,7 +65,7 @@ Do not build, do not scaffold for:
 * Follow-up questions, probing, or any question that adapts to what I answered
 * Editing questions after creation. Add and delete only.
 * Question categories, tags, difficulty, search, or ordering controls
-* Variable session length, user-chosen length, early exit, or resume
+* Resume. A session cannot be left running: leaving the room ends it (ADR 0024).
 * **SSR or server-rendered routes.** TanStack Start runs in SPA mode.
 * Cloud speech services. Voice uses the browser's built-in APIs only, so no new
   dependency and no service-account credentials.
@@ -131,24 +131,28 @@ app code depends on it and it is not part of the runtime.
 ## Question bank rules
 
 * Questions are added one at a time through the UI. Add and delete only.
-* A session asks every question in the bank, shuffled into a random order.
-  Each question appears exactly once.
-* A session needs at least one question in the bank. Below that, block session
-  start and say so. There is no minimum beyond one.
+* A session asks the questions picked for it when it was created, shuffled into
+  a random order. Each question appears exactly once.
+* A session needs at least one question picked. Below that, block session start
+  and say so. There is no minimum beyond one.
 * A turn stores the question text, not a foreign key to it. Deleting a question
   later must not blank out or corrupt an old transcript.
 
 ## Session length
 
-* A session asks **every question in the bank**, in random order. There is no
-  fixed length and no cap: the bank's size at the moment the session starts is
-  the session's length.
-* That length is snapshotted onto the session row, so growing the bank later
+* A session asks **the questions picked for it**, in random order. There is no
+  fixed length and no cap: how many were picked at the moment the session
+  starts is the session's length. See ADR 0032.
+* Sessions are created from **Sessions**, on a screen that lists the bank with
+  every row ticked by default, so the whole bank is one press away and a
+  shorter sitting is a matter of unticking.
+* That length is snapshotted onto the session row, so changing the bank later
   does not change how a finished session reads, and sessions of different
   lengths coexist. Progress is read from server data, never from a counter the
   UI keeps.
 * The session ends automatically once the last answer is submitted, which
-  triggers report generation. No end button, no early exit, no resume.
+  triggers report generation. Leaving the room ends it early (ADR 0024); there
+  is no resume.
 * The state machine owns the count.
 
 ## Feedback report rules
@@ -213,8 +217,9 @@ Three layers, no overlap. Don't write a test that belongs in a lower layer.
   * turns persist in order
   * the session auto-ends on the Nth answer and not before
   * answering an ended session is rejected
-  * starting a session with an empty bank is rejected, and any other bank gives
-    a session exactly as long as the bank
+  * starting a session with nothing picked is rejected, and any other pick
+    gives a session exactly as long as the pick — including when a picked
+    question was deleted in between, which is skipped rather than asked
   * deleting a question leaves old transcripts intact
   * deleting a session removes its turns and its report, and leaves the bank
     and other sessions alone
@@ -230,10 +235,13 @@ Three layers, no overlap. Don't write a test that belongs in a lower layer.
   same path a user gets when speech is unavailable.
 * Thin by design. The integration layer already proves the flow works, so these
   prove the UI is wired to it.
-* One happy path: add questions, start a session, type N answers, see the
-  transcript, see the report.
-* One spec for empty and failure states: empty question bank, no sessions yet,
-  and a session whose report is missing.
+* One happy path: add questions, pick them all, start a session, type N
+  answers, see the transcript, see the report.
+* One spec for empty and failure states: empty question bank, nothing picked,
+  no sessions yet, and a session whose report is missing.
+* One spec for picking, since it is what a session now is: a bank of four with
+  two ticked gives a session exactly as long as the pick, and leaves the bank
+  whole.
 * One spec for deleting a question, since it is destructive and two-step:
   cancelling keeps the question, confirming removes it.
 * One spec for deleting a session, for the same reason, which also checks the

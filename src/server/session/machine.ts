@@ -6,8 +6,8 @@
  * code, and "unhandled events are ignored" is the wrong default for that.
  *
  * The machine is the only thing that decides when a session ends. A session
- * asks every question in the bank, in random order, so its length is simply
- * how many questions existed when it started. It needs at least one.
+ * asks the questions chosen for it when it was created, in random order, so
+ * its length is simply how many were picked. It needs at least one.
  *
  * It ends two ways: the last answer, or END when the room is left. Both go
  * through report generation, so there is one terminal path and no such thing
@@ -35,8 +35,8 @@ export type MachineState =
 export type MachineEvent =
   | {
       readonly type: "START";
-      /** How many questions the bank holds; becomes the session's length. */
-      readonly availableQuestions: number;
+      /** How many questions were picked for it; becomes the session's length. */
+      readonly selectedQuestions: number;
     }
   | { readonly type: "SUBMIT_ANSWER" }
   /** Leaving the room. Ends the session wherever it had got to. */
@@ -45,7 +45,7 @@ export type MachineEvent =
   | { readonly type: "REPORT_FAILED" };
 
 export type RejectionReason =
-  | "empty_question_bank"
+  | "no_questions_selected"
   | "session_already_started"
   | "session_not_started"
   | "session_already_ended"
@@ -73,18 +73,18 @@ export function transition(
   if (event.type === "START") {
     if (state !== null) return reject("session_already_started");
     if (
-      !Number.isInteger(event.availableQuestions) ||
-      event.availableQuestions < 1
+      !Number.isInteger(event.selectedQuestions) ||
+      event.selectedQuestions < 1
     ) {
-      return reject("empty_question_bank");
+      return reject("no_questions_selected");
     }
     return accept({
       status: "awaiting_answer",
       position: 1,
-      // The whole bank, so the length is whatever it held at this moment. It
-      // is snapshotted onto the row, which is what lets the bank grow later
-      // without changing how a finished session reads.
-      questionCount: event.availableQuestions,
+      // Whatever was picked at this moment. It is snapshotted onto the row,
+      // which is what lets the bank change later without changing how a
+      // finished session reads.
+      questionCount: event.selectedQuestions,
     });
   }
 

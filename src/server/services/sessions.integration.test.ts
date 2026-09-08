@@ -32,11 +32,19 @@ async function seedBank(count: number): Promise<void> {
   }
 }
 
-async function start(): Promise<string> {
-  const result = await createSession(h.db);
+/**
+ * Starts a session over the whole bank, which is what most of these specs are
+ * about. Pass ids to start one over a narrower pick.
+ */
+async function start(questionIds?: readonly string[]): Promise<string> {
+  const ids = questionIds ?? (await bankIds());
+  const result = await createSession(h.db, ids);
   if (!result.ok) throw new Error(`expected a session, got ${result.reason}`);
   return result.sessionId;
 }
+
+const bankIds = async (): Promise<string[]> =>
+  (await listQuestions(h.db)).map((question) => question.id);
 
 const answer = (id: string, text: string) =>
   submitAnswer(h.db, h.reports, id, text);
@@ -45,16 +53,81 @@ const answer = (id: string, text: string) =>
 const end = (id: string) => endSession(h.db, h.reports, id);
 
 describe("starting a session", () => {
-  it("is refused only when the bank is empty", async () => {
-    const result = await createSession(h.db);
+  it("is refused when nothing is picked", async () => {
+    await seedBank(N);
+    const result = await createSession(h.db, []);
     expect(result).toMatchObject({
       ok: false,
-      reason: "empty_question_bank",
-      have: 0,
+      reason: "no_questions_selected",
     });
 
     expect(await h.db.select().from(sessions)).toHaveLength(0);
     expect(await h.db.select().from(turns)).toHaveLength(0);
+  });
+
+  // Every id picked had been deleted by the time the session was created,
+  // which leaves nothing to ask. Same refusal as picking nothing at all.
+  it("is refused when none of the picked questions are still there", async () => {
+    await seedBank(1);
+    const [id] = await bankIds();
+    if (!id) throw new Error("expected a seeded question");
+    await deleteQuestion(h.db, id);
+
+    expect(await createSession(h.db, [id])).toMatchObject({
+      ok: false,
+      reason: "no_questions_selected",
+    });
+    expect(await h.db.select().from(sessions)).toHaveLength(0);
+  });
+
+  it("asks the questions picked and no others", async () => {
+    await seedBank(5);
+    const bank = await listQuestions(h.db);
+    const picked = bank.slice(0, 2);
+    const id = await start(picked.map((question) => question.id));
+
+    const [row] = await h.db.select().from(sessions).where(eq(sessions.id, id));
+    expect(row?.questionCount).toBe(2);
+
+    const rows = await h.db.select().from(turns).where(eq(turns.sessionId, id));
+    expect(rows.map((turn) => turn.questionText).sort()).toEqual(
+      picked.map((question) => question.text).sort(),
+    );
+  });
+
+  it("collapses a question picked twice into one turn", async () => {
+    await seedBank(1);
+    const [questionId] = await bankIds();
+    if (!questionId) throw new Error("expected a seeded question");
+    const id = await start([questionId, questionId]);
+
+    const [row] = await h.db.select().from(sessions).where(eq(sessions.id, id));
+    expect(row?.questionCount).toBe(1);
+    expect(await h.db.select().from(turns)).toHaveLength(1);
+  });
+
+  // A picker drawn before the question was deleted. The session is as long as
+  // the bank could actually supply, rather than carrying an empty turn.
+  it("skips a picked question that has since been deleted", async () => {
+    await seedBank(3);
+    const bank = await listQuestions(h.db);
+    const gone = bank[0];
+    if (!gone) throw new Error("expected a seeded question");
+    await deleteQuestion(h.db, gone.id);
+
+    const result = await createSession(
+      h.db,
+      bank.map((question) => question.id),
+    );
+    expect(result).toMatchObject({ ok: true, questionCount: 2 });
+    if (!result.ok) return;
+
+    const rows = await h.db
+      .select()
+      .from(turns)
+      .where(eq(turns.sessionId, result.sessionId));
+    expect(rows).toHaveLength(2);
+    expect(rows.map((turn) => turn.questionText)).not.toContain(gone.text);
   });
 
   it("starts on a single question and ends after one answer", async () => {
@@ -72,7 +145,7 @@ describe("starting a session", () => {
     expect(detail?.report).not.toBeNull();
   });
 
-  it("is exactly as long as the bank, however big the bank is", async () => {
+  it("is exactly as long as the pick, however big the pick is", async () => {
     await seedBank(8);
     const id = await start();
 

@@ -9,7 +9,7 @@ const QUESTIONS = [
   "How do you give difficult feedback?",
 ];
 
-test("add questions, run a session, read the transcript and report", async ({
+test("add questions, pick them all, run a session, read the transcript and report", async ({
   page,
 }) => {
   await resetDatabase();
@@ -21,6 +21,10 @@ test("add questions, run a session, read the transcript and report", async ({
     await expect(page.getByText(question)).toBeVisible();
   }
 
+  // Sessions are created from Sessions, over the questions picked there. The
+  // picker opens with the whole bank ticked, so this presses straight through.
+  await page.getByRole("link", { name: "New session" }).click();
+  await expect(page.getByText("All 5 picked")).toBeVisible();
   await page.getByRole("button", { name: "Start a session" }).click();
 
   // Arriving reads nothing out: the room opens on the briefing and waits to be

@@ -24,6 +24,7 @@ test("leaving part way through ends the interview and reports on what was answer
     await expect(page.getByText(question)).toBeVisible();
   }
 
+  await page.getByRole("link", { name: "New session" }).click();
   await page.getByRole("button", { name: "Start a session" }).click();
   // Typing throughout: these specs drive no microphone.
   await page.getByRole("button", { name: "Type" }).click();
@@ -83,6 +84,7 @@ test("leaving before answering anything ends it without a report", async ({
 
   await page.getByLabel("New question").fill("The only question?");
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("link", { name: "New session" }).click();
   await page.getByRole("button", { name: "Start a session" }).click();
 
   await expect(

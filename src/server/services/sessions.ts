@@ -1,4 +1,14 @@
-import { and, asc, count, desc, eq, isNotNull, lte, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  lte,
+  sql,
+} from "drizzle-orm";
 import {
   type StructuredReport,
   structuredReportSchema,
@@ -38,42 +48,52 @@ export interface SessionDetail {
 }
 
 export type CreateSessionResult =
-  | { readonly ok: true; readonly sessionId: string }
   | {
-      readonly ok: false;
-      readonly reason: RejectionReason;
-      readonly have: number;
-    };
+      readonly ok: true;
+      readonly sessionId: string;
+      /** How many of the picked questions were still in the bank. */
+      readonly questionCount: number;
+    }
+  | { readonly ok: false; readonly reason: RejectionReason };
 
 /**
- * Starts a session over the whole question bank, shuffled, copying each
+ * Starts a session over the questions picked for it, shuffled, copying each
  * question's text onto its turn and inserting every turn up front with no
- * answer yet. Only an empty bank is refused.
+ * answer yet. Picking nothing is the only refusal.
+ *
+ * The ids are resolved against the bank inside the transaction, and what comes
+ * back is the session: duplicates collapse, and an id deleted since the picker
+ * was drawn is simply not asked. So the length is what the bank could actually
+ * supply, not what was requested — which is why it is returned, for a caller
+ * that wants to say a question went missing.
  */
 export async function createSession(
   db: Database,
+  questionIds: readonly string[],
 ): Promise<CreateSessionResult> {
-  const [available] = await db.select({ value: count() }).from(questions);
-  const have = available?.value ?? 0;
-
-  const started = transition(null, {
-    type: "START",
-    availableQuestions: have,
-  });
-  if (!started.ok) {
-    return { ok: false, reason: started.reason, have };
+  const wanted = [...new Set(questionIds)];
+  // `inArray` with nothing in it is not a query worth sending, and the machine
+  // rejects the empty session anyway.
+  if (wanted.length === 0) {
+    return { ok: false, reason: "no_questions_selected" };
   }
 
-  // The machine decides the length: every question the bank holds.
-  const questionCount = started.state.questionCount;
-
-  const sessionId = await db.transaction(async (tx) => {
+  const created = await db.transaction(async (tx) => {
     const picked = await tx
       .select({ text: questions.text })
       .from(questions)
+      .where(inArray(questions.id, wanted))
       // The query builder cannot express ORDER BY random(), so this is raw SQL.
-      // No limit: the session is the whole bank, in random order.
       .orderBy(sql`random()`);
+
+    const started = transition(null, {
+      type: "START",
+      selectedQuestions: picked.length,
+    });
+    if (!started.ok) return { ok: false as const, reason: started.reason };
+
+    // The machine decides the length: every question that was picked.
+    const questionCount = started.state.questionCount;
 
     const [session] = await tx
       .insert(sessions)
@@ -88,10 +108,10 @@ export async function createSession(
         questionText: question.text,
       })),
     );
-    return session.id;
+    return { ok: true as const, sessionId: session.id, questionCount };
   });
 
-  return { ok: true, sessionId };
+  return created;
 }
 
 export type SubmitAnswerResult =

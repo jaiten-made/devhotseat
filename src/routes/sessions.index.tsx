@@ -57,6 +57,14 @@ function SessionList() {
     <PageHeader
       title="Sessions"
       meta={sessions.isSuccess ? listCount(sessions.data.length) : undefined}
+      // Sessions start here, from the screen they end up on, rather than from
+      // the question bank. See
+      // [32](../../docs/adr/0032-a-session-is-the-questions-picked-for-it.md).
+      actions={
+        <Button asChild size="sm">
+          <Link to="/sessions/new">New session</Link>
+        </Button>
+      }
       description="Every interview you have practised, newest first. Open one to read its transcript and feedback."
     />
   );
@@ -93,14 +101,14 @@ function SessionList() {
 
         {sessions.data.length === 0 ? (
           <EmptyState>
-            No sessions yet. Start one from the{" "}
+            No sessions yet.{" "}
             <Link
-              to="/questions"
+              to="/sessions/new"
               className="font-medium text-ink underline underline-offset-4"
             >
-              question bank
-            </Link>
-            .
+              Start one
+            </Link>{" "}
+            by picking the questions it should ask.
           </EmptyState>
         ) : (
           <RowList>

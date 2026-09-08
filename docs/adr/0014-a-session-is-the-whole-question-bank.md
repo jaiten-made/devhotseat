@@ -1,5 +1,8 @@
 # 14. A session is the whole question bank
 
+> **Superseded by [0032](0032-a-session-is-the-questions-picked-for-it.md).**
+> A session now asks the questions picked for it when it is created.
+
 Supersedes [0012](0012-session-length-is-a-ceiling.md).
 
 ## Decision

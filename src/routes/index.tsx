@@ -78,12 +78,12 @@ function Dashboard() {
       <Page>
         {header}
         <EmptyState>
-          No practice to chart yet. Start a session from the{" "}
+          No practice to chart yet.{" "}
           <Link
-            to="/questions"
+            to="/sessions/new"
             className="font-medium text-ink underline underline-offset-4"
           >
-            question bank
+            Start a session
           </Link>{" "}
           and this fills in a square a day.
         </EmptyState>
