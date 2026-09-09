@@ -1,0 +1,101 @@
+{
+  "name": "main-flow",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "hide": [
+    ".tsqd-parent-container",
+    ".tsqd-open-btn-container"
+  ],
+  "steps": [
+    {
+      "action": "goto",
+      "path": "/questions",
+      "caption": "Every question you want to practise, kept in one bank",
+      "hold": 1300
+    },
+    {
+      "action": "type",
+      "testid": "question-input",
+      "text": "Tell me about a time you missed a deadline.",
+      "caption": "Add them by hand — you choose what you get asked",
+      "hold": 400
+    },
+    {
+      "action": "click",
+      "testid": "add-question",
+      "caption": "It lands in the bank straight away",
+      "hold": 1000
+    },
+    {
+      "action": "click",
+      "testid": "new-session",
+      "caption": "A session draws on whichever of them you tick",
+      "hold": 1300
+    },
+    {
+      "action": "click",
+      "testid": "start-session",
+      "caption": "Take the lot, or cut it down to what you are weak on",
+      "hold": 1500
+    },
+    {
+      "action": "click",
+      "testid": "turn-bar",
+      "caption": "The room runs it like a call: one question at a time",
+      "hold": 1400
+    },
+    {
+      "action": "click",
+      "testid": "use-typing",
+      "caption": "Answer out loud, or switch to typing",
+      "hold": 900
+    },
+    {
+      "action": "type",
+      "testid": "answer-input",
+      "text": "I underestimated a data migration, and said so the week I knew.",
+      "caption": "",
+      "hold": 500
+    },
+    {
+      "action": "click",
+      "testid": "turn-bar",
+      "caption": "Hand the turn back and it moves on",
+      "hold": 1400
+    },
+    {
+      "action": "goto",
+      "path": "/sessions/d3305eed-0000-4000-8000-00000000de00",
+      "caption": "Afterwards it scores what you actually said",
+      "hold": 1600
+    },
+    {
+      "action": "scroll",
+      "testid": "report-radar",
+      "caption": "Five STAR-L pillars, weighted — the shape says what let you down",
+      "hold": 1800
+    },
+    {
+      "action": "scroll",
+      "testid": "report-radar",
+      "by": 700,
+      "caption": "Then a card per answer: what was strongest, what to change",
+      "hold": 1700
+    },
+    {
+      "action": "goto",
+      "path": "/",
+      "caption": "And a square for every day you sit in the hot seat",
+      "hold": 1500
+    },
+    {
+      "action": "hover",
+      "testid": "streak-stats",
+      "caption": "Which is the only part that actually makes you better",
+      "hold": 1700,
+      "captionAt": "top"
+    }
+  ]
+}
