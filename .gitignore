@@ -12,3 +12,7 @@ coverage/
 
 playwright-report/
 test-results/
+
+# Demo recordings: the storyboards are committed, the video output is not.
+.demos/*.mp4
+.demos/*.webm
