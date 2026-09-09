@@ -19,7 +19,8 @@
       "action": "click",
       "testid": "turn-bar",
       "caption": "",
-      "hold": 200
+      "hold": 200,
+      "zoom": 1
     },
     {
       "action": "wait",
