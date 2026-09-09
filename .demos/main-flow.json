@@ -11,53 +11,34 @@
   "steps": [
     {
       "action": "goto",
-      "path": "/questions",
-      "caption": "Every question you want to practise",
-      "hold": 500
-    },
-    {
-      "action": "type",
-      "testid": "question-input",
-      "text": "Tell me about a time you missed a deadline.",
-      "caption": "Add them by hand",
-      "hold": 400
-    },
-    {
-      "action": "click",
-      "testid": "add-question",
-      "caption": "It lands in the bank",
-      "hold": 500
-    },
-    {
-      "action": "click",
-      "testid": "new-session",
-      "caption": "A session draws on the ones you tick",
-      "hold": 500
-    },
-    {
-      "action": "click",
-      "testid": "start-session",
-      "caption": "Take the lot, or just your weak spots",
-      "hold": 600
+      "path": "/sessions/d3305eed-0000-4000-8000-00000000cafe",
+      "caption": "",
+      "hold": 250
     },
     {
       "action": "click",
       "testid": "turn-bar",
-      "caption": "The room runs it like a call",
-      "hold": 600
+      "caption": "",
+      "hold": 200
+    },
+    {
+      "action": "wait",
+      "hold": 500,
+      "caption": "It reads you a question, you answer",
+      "captionAt": "top"
     },
     {
       "action": "click",
       "testid": "use-typing",
-      "caption": "Answer out loud, or type instead",
+      "caption": "Out loud, or typed",
       "hold": 500
     },
     {
       "action": "type",
       "testid": "answer-input",
-      "text": "I underestimated a data migration, and said so the week I knew.",
+      "text": "I underestimated it, and said so early.",
       "caption": "",
-      "hold": 400
+      "hold": 300
     },
     {
       "action": "click",
@@ -68,33 +49,47 @@
     {
       "action": "goto",
       "path": "/sessions/d3305eed-0000-4000-8000-00000000de00",
-      "caption": "Afterwards it scores what you said",
-      "hold": 700
+      "caption": "Then it scores what you said",
+      "hold": 600,
+      "captionAt": "top"
     },
     {
       "action": "scroll",
       "testid": "report-radar",
       "caption": "Five STAR-L pillars, weighted",
-      "hold": 700
+      "hold": 900
     },
     {
       "action": "scroll",
       "testid": "report-radar",
       "by": 700,
-      "caption": "Then a card per answer",
+      "caption": "And what to fix, answer by answer",
+      "hold": 900
+    },
+    {
+      "action": "goto",
+      "path": "/questions",
+      "caption": "You choose what it asks",
+      "hold": 500
+    },
+    {
+      "action": "type",
+      "testid": "question-input",
+      "text": "How do you handle conflict?",
+      "caption": "",
+      "hold": 300
+    },
+    {
+      "action": "click",
+      "testid": "add-question",
+      "caption": "Add anything you want to practise",
       "hold": 700
     },
     {
       "action": "goto",
       "path": "/",
-      "caption": "A square for every day you practise",
-      "hold": 600
-    },
-    {
-      "action": "hover",
-      "testid": "streak-stats",
-      "caption": "The part that makes you better",
-      "hold": 900,
+      "caption": "A square for every day you show up",
+      "hold": 1100,
       "captionAt": "top"
     }
   ]

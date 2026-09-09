@@ -26,6 +26,19 @@ if (!new URL(connectionString).pathname.endsWith("_test")) {
 
 /** Fixed, so .demos/main-flow.json can link to the finished report. */
 const SESSION_ID = "d3305eed-0000-4000-8000-00000000de00";
+/**
+ * A session already open in the room, so the recording can start inside the
+ * interview rather than spending its first seconds creating one. Nothing is
+ * answered yet: the room opens on its briefing and waits to be started.
+ */
+const SESSION_LIVE = "d3305eed-0000-4000-8000-00000000cafe";
+
+/** What the open session will ask, in order. */
+const LIVE_QUESTIONS = [
+  "Tell me about a time you missed a deadline.",
+  "Describe a technical decision you argued against.",
+  "How do you give a colleague difficult feedback?",
+];
 
 /** What the bank already holds when the recording starts. */
 const BANK = [
@@ -161,6 +174,19 @@ try {
       [SESSION_ID, i + 1, turn.q, turn.a],
     );
   }
+  // The session the recording opens in: started, nothing answered.
+  await pool.query(
+    `INSERT INTO sessions (id, question_count, started_at)
+     VALUES ($1, $2, now() - interval '2 minutes')`,
+    [SESSION_LIVE, LIVE_QUESTIONS.length],
+  );
+  for (const [i, question] of LIVE_QUESTIONS.entries()) {
+    await pool.query(
+      "INSERT INTO turns (session_id, position, question_text) VALUES ($1, $2, $3)",
+      [SESSION_LIVE, i + 1, question],
+    );
+  }
+
   await pool.query(
     "INSERT INTO reports (session_id, content, structured, model) VALUES ($1, $2, $3, $4)",
     [SESSION_ID, content, structured, "seeded-for-demo"],
@@ -168,6 +194,7 @@ try {
 
   console.log(`seeded: ${BANK.length} questions, ${days.length + 1} practice days`);
   console.log(`report at /sessions/${SESSION_ID}`);
+  console.log(`open room at /sessions/${SESSION_LIVE}`);
 } finally {
   await pool.end();
 }
