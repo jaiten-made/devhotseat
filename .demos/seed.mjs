@@ -33,12 +33,11 @@ const SESSION_ID = "d3305eed-0000-4000-8000-00000000de00";
  */
 const SESSION_LIVE = "d3305eed-0000-4000-8000-00000000cafe";
 
-/** What the open session will ask, in order. */
-const LIVE_QUESTIONS = [
-  "Tell me about a time you missed a deadline.",
-  "Describe a technical decision you argued against.",
-  "How do you give a colleague difficult feedback?",
-];
+/**
+ * One question. A session is as long as you make it, and a demo of a
+ * three-question interview is mostly watching someone type.
+ */
+const LIVE_QUESTIONS = ["Tell me about a time you missed a deadline."];
 
 /** What the bank already holds when the recording starts. */
 const BANK = [
@@ -46,63 +45,65 @@ const BANK = [
   "How do you decide what to test?",
 ];
 
-const ANSWERED = [
-  {
-    q: "Describe the hardest bug you have ever debugged.",
-    a: "We had a webhook dropping deliveries, and only ever in production. I turned on logging around the handler, replayed the failed payloads locally, and worked through it with another backend dev until the pattern showed up — something upstream was closing the connection before our retry landed. I shortened our timeout so we closed first, and the drops stopped.",
-    strength:
-      "The debugging is walked through step by step, in the order you actually did it.",
-    improvement:
-      "Say what the drops were costing. A number turns a fix into a result.",
-  },
-  {
-    q: "How do you decide what to test?",
-    a: "I go after the parts where a mistake costs something — payments, permissions, anything that writes or deletes. Those get unit tests wherever I can, and I keep the browser tests to the few journeys nobody can avoid. If I fix a bug I add a test for it too.",
-    strength: "A clear, defensible rule rather than a list of test types.",
-    improvement:
-      "Ground it in one real decision you made, and what it caught.",
-  },
-  {
-    q: "Tell me about a project that did not go to plan.",
-    a: "A migration off an old scheduling service. I estimated six weeks. Once the data started moving it turned out a lot of rows had timestamps we could not trust, so I wrote a normaliser and hand-checked batches of it. Everything got across and nothing was lost, but it took far longer than I had told people.",
-    strength: "You own the estimate rather than explaining it away.",
-    improvement:
-      "Finish on the lesson — what you would do differently on the next estimate.",
-  },
-];
+/**
+ * The answer the finished report is written about.
+ *
+ * Deliberately a middling one. It has real execution in it and stops dead
+ * before the outcome, which is the most common shape of a rehearsed answer —
+ * and a report that hands out full marks demonstrates nothing.
+ */
+const ANSWERED = {
+  q: "Tell me about a time you missed a deadline.",
+  a: "We were migrating off an old scheduling service and I had estimated six weeks for it. Once we started moving data across, a lot of the rows had timestamps we could not trust, so I wrote a normaliser and hand-checked batches of it against the source. I kept everyone posted in standup while that was going on. We got it all across in the end, but it took longer than I had told people it would.",
+  strength:
+    "The recovery is concrete and in order: you say what you found and what you built to deal with it.",
+  improvement:
+    "End on the outcome, not the apology. Say how much longer, and what it cost.",
+};
 
-const pillars = (situation, task, action, result, learning, evidence) => ({
-  situation: { score: situation, evidence },
-  task: { score: task, evidence },
-  action: { score: action, evidence },
-  result: { score: result, evidence },
-  learning: { score: learning, evidence },
-});
-
+/**
+ * A proper STAR-L read: five pillars judged separately, each against what the
+ * answer actually says, rather than one impression spread across all of them.
+ *
+ * Action carries 55% and is the strongest part here; Result is the floor,
+ * because the answer never lands one. Weighted, that comes out at 2.4 — a
+ * leaning no-hire, which is the honest read of an answer like this.
+ */
 const structured = {
   turns: [
     {
       position: 1,
-      ...pillars(3, 3, 4, 3, 3, "Replayed the failed payloads locally to find the pattern."),
-      strength: ANSWERED[0].strength,
-      improvement: ANSWERED[0].improvement,
-    },
-    {
-      position: 2,
-      ...pillars(2, 3, 3, 2, 3, "Covers payments and permissions first, browser tests last."),
-      strength: ANSWERED[1].strength,
-      improvement: ANSWERED[1].improvement,
-    },
-    {
-      position: 3,
-      ...pillars(3, 3, 3, 2, 4, "Wrote a normaliser and hand-checked batches of the data."),
-      strength: ANSWERED[2].strength,
-      improvement: ANSWERED[2].improvement,
+      situation: {
+        score: 3,
+        evidence:
+          "Sets up the migration and the six-week estimate, but not what was riding on the date.",
+      },
+      task: {
+        score: 2,
+        evidence:
+          "The estimate is owned, but your remit beyond it stays vague — mostly \"we\".",
+      },
+      action: {
+        score: 3,
+        evidence:
+          "Wrote a normaliser for the untrusted timestamps and hand-checked batches against the source.",
+      },
+      result: {
+        score: 1,
+        evidence:
+          "Closes on \"longer than I had told people\" — no revised date, no cost, nothing measured.",
+      },
+      learning: {
+        score: 1,
+        evidence: "Nothing on what you would estimate differently next time.",
+      },
+      strength: ANSWERED.strength,
+      improvement: ANSWERED.improvement,
     },
   ],
-  headline: "Strong on execution, thin on the results your work produced.",
+  headline: "Real execution, but the story stops before the result.",
   narrative:
-    "Your actions are the best part of these answers. You walk through what you did in the order you did it, you say \"I\" where it matters, and the technical detail is concrete without turning into a tour of the codebase. That is the pillar worth the most, and you are already good at it.\n\nWhere you lose ground is the result. Two of these three answers stop at the point the work was finished, without saying what changed because of it. The migration answer is the clearest case: you got everything across and lost nothing, which is the result, but it arrives as an aside after the apology about the estimate. Lead with it.\n\nOne thing to try: before each answer, decide the last sentence first. If it is not a number or an outcome, you are ending in the wrong place.",
+    "The middle of this answer is the strong part. You found the timestamps you could not trust, you wrote something to deal with them, and you checked the output by hand rather than assuming. That is the pillar worth the most and you did not have to be asked for it.\n\nIt falls over at the end. \"It took longer than I had told people\" is an apology, not a result — there is no revised date, no sense of what the overrun cost, and no one is left knowing whether the migration was a success. An interviewer has to take the outcome on trust, and most will not.\n\nThe learning is missing entirely. You owned the bad estimate, which is worth something, but you never say what you would do differently, so it reads as a confession rather than a lesson.\n\nTry it again and decide the last sentence before you start. If it is not an outcome, you are ending in the wrong place.",
 };
 
 // Rendered as plain text, not markdown: a `##` here shows up as a `##`.
@@ -148,7 +149,7 @@ try {
     `WITH sat AS (SELECT started FROM unnest($1::timestamptz[]) AS started),
           inserted AS (
             INSERT INTO sessions (question_count, started_at, ended_at)
-            SELECT 3, started, started + interval '12 minutes' FROM sat
+            SELECT 1, started, started + interval '12 minutes' FROM sat
             RETURNING id, started_at
           )
      INSERT INTO turns (session_id, position, question_text, answer_text, answered_at)
@@ -157,23 +158,21 @@ try {
             inserted.started_at + asked.position * interval '2 minutes'
      FROM inserted
      CROSS JOIN unnest($2::text[]) WITH ORDINALITY AS asked(text, position)`,
-    [days.map(evening), ANSWERED.map((t) => t.q)],
+    [days.map(evening), [ANSWERED.q]],
   );
 
   // The finished session the storyboard links to, ended earlier today so it
   // sits at the top of the list and fills in today's square.
   await pool.query(
     `INSERT INTO sessions (id, question_count, started_at, ended_at)
-     VALUES ($1, 3, now() - interval '38 minutes', now() - interval '22 minutes')`,
+     VALUES ($1, 1, now() - interval '38 minutes', now() - interval '22 minutes')`,
     [SESSION_ID],
   );
-  for (const [i, turn] of ANSWERED.entries()) {
-    await pool.query(
-      `INSERT INTO turns (session_id, position, question_text, answer_text, answered_at)
-       VALUES ($1, $2, $3, $4, now() - interval '25 minutes')`,
-      [SESSION_ID, i + 1, turn.q, turn.a],
-    );
-  }
+  await pool.query(
+    `INSERT INTO turns (session_id, position, question_text, answer_text, answered_at)
+     VALUES ($1, 1, $2, $3, now() - interval '25 minutes')`,
+    [SESSION_ID, ANSWERED.q, ANSWERED.a],
+  );
   // The session the recording opens in: started, nothing answered.
   await pool.query(
     `INSERT INTO sessions (id, question_count, started_at)

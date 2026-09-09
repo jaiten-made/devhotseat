@@ -42,10 +42,10 @@
       "hold": 300
     },
     {
-      "action": "click",
+      "action": "hover",
       "testid": "turn-bar",
       "caption": "Hand the turn back",
-      "hold": 600
+      "hold": 700
     },
     {
       "action": "goto",
@@ -64,7 +64,7 @@
       "action": "scroll",
       "testid": "report-radar",
       "by": 700,
-      "caption": "And what to fix, answer by answer",
+      "caption": "And exactly what to fix",
       "hold": 900
     },
     {
