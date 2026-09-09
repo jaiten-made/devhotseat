@@ -28,7 +28,10 @@ export function VerdictHero({
 
   return (
     <Panel>
-      <div className="flex flex-col divide-y divide-rule sm:flex-row sm:divide-x sm:divide-y-0">
+      <div
+        className="flex flex-col divide-y divide-rule sm:flex-row sm:divide-x sm:divide-y-0"
+        data-testid="report-verdict"
+      >
         <div className="min-w-0 flex-1 p-6">
           <p className="field-label">Verdict</p>
           <p

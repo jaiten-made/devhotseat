@@ -601,6 +601,7 @@ function VoiceTurn({
       size="sm"
       onClick={onUseTyping}
       className="text-ink-muted hover:text-ink"
+      data-testid="use-typing"
     >
       <Keyboard className="size-4" />
       Type
@@ -792,6 +793,7 @@ function TypedTurn({
           onChange={(event) => setAnswer(event.target.value)}
           placeholder="Type your answer…"
           aria-label="Your answer"
+          data-testid="answer-input"
           rows={6}
           className="w-full max-w-lg"
         />

@@ -12,7 +12,10 @@ import type { Heatmap } from "@/lib/activity/heatmap";
 export function StreakStats({ heatmap }: { heatmap: Heatmap }) {
   return (
     <Panel>
-      <dl className="grid grid-cols-3 divide-x divide-rule">
+      <dl
+        className="grid grid-cols-3 divide-x divide-rule"
+        data-testid="streak-stats"
+      >
         <Stat label="Current streak" value={heatmap.currentStreak} unit="day" />
         <Stat label="Longest streak" value={heatmap.longestStreak} unit="day" />
         <Stat label="Days practised" value={heatmap.daysPractised} unit="day" />

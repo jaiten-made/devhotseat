@@ -40,6 +40,7 @@ export function PillarRadar({ averages, verdict }: PillarRadarProps) {
         className="h-auto w-full max-w-[260px]"
         role="img"
         aria-labelledby="radar-title"
+        data-testid="report-radar"
       >
         <title id="radar-title">
           STAR-L scores across the five pillars, each out of 4

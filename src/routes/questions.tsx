@@ -73,7 +73,9 @@ function QuestionBank() {
         // it, not a second way of doing it.
         questions.isSuccess && questions.data.length > 0 ? (
           <Button asChild variant="outline" size="sm">
-            <Link to="/sessions/new">New session</Link>
+            <Link to="/sessions/new" data-testid="new-session">
+              New session
+            </Link>
           </Button>
         ) : undefined
       }
@@ -119,6 +121,7 @@ function QuestionBank() {
             onChange={(event) => setText(event.target.value)}
             placeholder="Add an interview question…"
             aria-label="New question"
+            data-testid="question-input"
           />
           <Button
             type="submit"
@@ -126,6 +129,7 @@ function QuestionBank() {
             tone="success"
             className="text-ink-muted"
             disabled={text.trim() === "" || add.isPending}
+            data-testid="add-question"
           >
             Add
           </Button>

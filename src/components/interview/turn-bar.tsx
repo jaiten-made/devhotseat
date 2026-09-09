@@ -69,6 +69,7 @@ export function TurnBar({
       <div
         role="status"
         aria-live="polite"
+        data-testid="turn-bar"
         className={cn(shape, "border border-rule bg-sunk text-ink-muted")}
       >
         {body}
@@ -80,6 +81,7 @@ export function TurnBar({
     <button
       type="button"
       onClick={onClick}
+      data-testid="turn-bar"
       className={cn(
         shape,
         "bg-ink text-paper shadow-sm hover:bg-ink/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper",

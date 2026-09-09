@@ -34,7 +34,7 @@ export function StreakHeatmap({ heatmap }: { heatmap: Heatmap }) {
   return (
     // A year of weeks is wider than a phone. It scrolls rather than reflowing:
     // a contribution graph with wrapped weeks is no longer one.
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto" data-testid="streak-heatmap">
       <table className="border-separate border-spacing-[2px]">
         <caption className="sr-only">
           Practice by day, from {DAY.format(heatmap.from)} to{" "}

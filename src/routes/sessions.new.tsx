@@ -237,6 +237,7 @@ function NewSession() {
           className="shrink-0"
           onClick={() => begin.mutate(selectedIds)}
           disabled={!canStart || begin.isPending}
+          data-testid="start-session"
         >
           {begin.isPending ? "Starting…" : "Start a session"}
         </Button>
